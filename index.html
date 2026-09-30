@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A little something for you</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=Cormorant+Garamond:ital,wght@1,500;1,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="air" aria-hidden="true"></div>
+<main class="stage">
+  <h1 id="title"></h1>
+  <div class="scene" id="scene">
+    <div class="book" aria-hidden="true"></div>
+    <div class="back"></div>
+    <div class="letter" id="letter"><button class="go" id="go"></button></div>
+    <svg class="front" viewBox="0 0 100 64" preserveAspectRatio="none" aria-hidden="true">
+      <polygon points="0,0 50,36 0,64" fill="#eedcc1" stroke="rgba(150,110,80,.28)" stroke-width=".3"/>
+      <polygon points="100,0 50,36 100,64" fill="#ecd9bc" stroke="rgba(150,110,80,.28)" stroke-width=".3"/>
+      <polygon points="0,64 50,30 100,64" fill="#f7ebd6" stroke="rgba(150,110,80,.3)" stroke-width=".3"/>
+    </svg>
+    <div class="flap"></div>
+    <svg class="flowers" viewBox="0 0 100 160" aria-hidden="true">
+      <defs><g id="u" fill="#f0b39a"><circle r="4"/><circle cx="-7" cy="3" r="3.4"/><circle cx="7" cy="3" r="3.4"/><circle cx="-4" cy="-6" r="3.2"/><circle cx="5" cy="-6" r="3.2"/><circle cx="-10" cy="-3" r="2.6"/><circle cx="11" cy="-2" r="2.6"/></g></defs>
+      <g fill="none" stroke="#9c9a68" stroke-width="1.6" stroke-linecap="round"><path d="M50 150C48 110 44 80 30 42"/><path d="M50 150C53 100 62 68 72 32"/><path d="M50 150C50 118 50 90 54 62"/></g>
+      <use href="#u" transform="translate(30 40)"/><use href="#u" transform="translate(72 30)"/><use href="#u" transform="translate(54 58) scale(.85)"/>
+      <rect x="20" y="126" width="48" height="14" fill="#a9ae9b" opacity=".92" transform="rotate(-8 44 133)"/>
+    </svg>
+    <button class="seal" id="seal" aria-label="Open the envelope">
+      <svg viewBox="0 0 40 40" fill="rgba(140,30,45,.35)" stroke="rgba(255,205,205,.8)" stroke-width="1.2" stroke-linecap="round">
+        <path d="M20 20C10 9 3 14 6 20C3 26 10 31 20 20Z"/><path d="M20 20C30 9 37 14 34 20C37 26 30 31 20 20Z"/>
+        <circle cx="20" cy="20" r="3"/><path d="M19 23L14 35M21 23L26 35" fill="none"/>
+      </svg>
+    </button>
+  </div>
+  <p class="hint" id="hint"></p>
+</main>
+<div id="scene2"><p id="s2"></p></div>
+<script src="script.js"></script>
+</body>
+</html>
