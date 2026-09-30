@@ -36,3 +36,13 @@ $("go").addEventListener("click", () => {
   scene.classList.add("gone");
   setTimeout(() => $("scene2").classList.add("show"), 700);
 });
+
+// theme toggle (colorful <-> minimal neutral); the starting theme is set in <head>
+const root = document.documentElement, tbtn = $("theme");
+function paint() { const d = root.dataset.theme === "dark"; tbtn.textContent = d ? "\u2600" : "\u263E"; tbtn.setAttribute("aria-pressed", d); }
+tbtn.addEventListener("click", () => {
+  root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+  try { localStorage.setItem("theme", root.dataset.theme); } catch (e) {}
+  paint();
+});
+paint();
