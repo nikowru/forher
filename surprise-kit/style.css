@@ -44,12 +44,18 @@ h1{margin:0;font:400 clamp(2.6rem,min(8vw,13vh),7rem)/1.05 'Pinyon Script',cursi
  background:linear-gradient(var(--flap1),var(--flap2));transition:transform .9s cubic-bezier(.5,0,.2,1),background .9s}
 .scene.open .flap{transform:rotateX(180deg);background:var(--flap3)}
 .scene.flapback .flap{z-index:1}
-.letter{position:absolute;left:50%;bottom:3%;width:80%;height:94%;z-index:2;transform:translateX(-50%);
- padding:var(--lh) calc(var(--w)*.07) 0;box-sizing:border-box;border-radius:3px;
- background:repeating-linear-gradient(transparent 0,transparent calc(var(--lh) - 1px),var(--rule) calc(var(--lh) - 1px),var(--rule) var(--lh)),var(--paper);
+.letter{--ruled:repeating-linear-gradient(transparent 0,transparent calc(var(--lh) - 1px),var(--rule) calc(var(--lh) - 1px),var(--rule) var(--lh));
+ position:absolute;left:50%;bottom:3%;width:80%;height:94%;z-index:2;transform:translateX(-50%);box-sizing:border-box;border-radius:3px;
+ background:var(--ruled),var(--paper);
  box-shadow:0 8px 22px rgba(var(--sh),.3);transition:transform 1.2s cubic-bezier(.3,.7,.2,1)}
 .scene.rise .letter{transform:translateX(-50%) translateY(-58%) rotate(-1deg)}
 .scene.read .letter{z-index:6;transform:translateX(-50%) translateY(-38%) scale(1.22) rotate(0)}
+/* text area: exactly 7 ruled lines, one rule down, above Continue; long letters scroll with their own lines */
+.text{position:absolute;top:var(--lh);height:calc(var(--lh)*7);left:0;right:0;padding:0 calc(var(--w)*.07);overflow:hidden;
+ background:var(--ruled),var(--paper);background-attachment:local;scrollbar-width:thin;scrollbar-color:var(--rule) transparent}
+.scene.read .text{overflow-y:auto}
+.text.more{-webkit-mask-image:linear-gradient(#000 calc(100% - var(--lh)),transparent);mask-image:linear-gradient(#000 calc(100% - var(--lh)),transparent)}
+.text:focus-visible{outline:2px solid var(--btn);outline-offset:-2px}
 .letter p{margin:0;font-size:calc(var(--lh)*.7);line-height:var(--lh);font-style:italic;font-weight:600;color:var(--ink)}
 .go{position:absolute;left:50%;bottom:calc(var(--lh)*.55);transform:translateX(-50%);padding:calc(var(--lh)*.22) calc(var(--lh)*1.2);
  font:italic 600 calc(var(--lh)*.7) 'Cormorant Garamond',Georgia,serif;color:var(--btn-text);background:var(--btn);border:0;border-radius:3px;cursor:pointer;box-shadow:0 3px 8px rgba(var(--sh),.35)}

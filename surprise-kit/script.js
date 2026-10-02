@@ -9,7 +9,7 @@ const CONFIG = {
 const $ = id => document.getElementById(id);
 $("title").textContent = CONFIG.heading; $("hint").textContent = CONFIG.hint;
 $("go").textContent = CONFIG.button; $("s2").textContent = CONFIG.scene2;
-CONFIG.letter.forEach(t => { const p = document.createElement("p"); p.textContent = t; $("letter").insertBefore(p, $("go")); });
+CONFIG.letter.forEach(t => { const p = document.createElement("p"); p.textContent = t; $("text").appendChild(p); });
 
 // drifting dust and petals
 const air = $("air");
@@ -29,7 +29,16 @@ $("seal").addEventListener("click", () => {
   setTimeout(() => scene.classList.add("open"), 350);
   setTimeout(() => scene.classList.add("flapback"), 800);
   setTimeout(() => { scene.classList.add("rise"); $("title").classList.add("fade"); $("hint").classList.add("fade"); }, 1250);
-  setTimeout(() => scene.classList.add("read"), 2500);
+  setTimeout(() => {
+    scene.classList.add("read");
+    // a long letter scrolls inside the paper; let keyboard users reach it too
+    const text = $("text");
+    if (text.scrollHeight > text.clientHeight) {
+      text.tabIndex = 0; text.setAttribute("role", "region"); text.setAttribute("aria-label", "Letter");
+      const more = () => text.classList.toggle("more", text.scrollTop + text.clientHeight < text.scrollHeight - 2);
+      text.addEventListener("scroll", more, { passive: true }); more();
+    }
+  }, 2500);
 });
 // Scene 2 goes here later (gallery); for now a soft placeholder
 $("go").addEventListener("click", () => {
