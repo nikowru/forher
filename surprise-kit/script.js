@@ -12,12 +12,17 @@ const CONFIG = {
     empty: "Nothing in here yet.",
     error: "The clips couldn't load. Check the internet connection and refresh the page."
   },
-  player: { close: "Close" }
+  player: {
+    close: "Close", previous: "Previous clip", next: "Next clip",
+    unavailable: "This clip can't play here, but you can still watch it on YouTube.",
+    openOnYouTube: "Open on YouTube"
+  }
 };
 const $ = id => document.getElementById(id);
 $("title").textContent = CONFIG.heading; $("hint").textContent = CONFIG.hint; $("go").textContent = CONFIG.button;
 $("g-title").textContent = CONFIG.gallery.title; $("g-sub").textContent = CONFIG.gallery.sub;
 $("p-close").setAttribute("aria-label", CONFIG.player.close);
+$("p-prev").setAttribute("aria-label", CONFIG.player.previous); $("p-next").setAttribute("aria-label", CONFIG.player.next);
 CONFIG.letter.forEach(t => { const p = document.createElement("p"); p.textContent = t; $("text").appendChild(p); });
 
 // drifting dust and petals
@@ -67,7 +72,7 @@ let clips = [], shown = [];
 const thumb = id => "https://img.youtube.com/vi/" + encodeURIComponent(id) + "/hqdefault.jpg";
 const niceDate = d => { const t = new Date(d + "T00:00:00"); return isNaN(t) ? d : t.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }); };
 
-function slot(c) {
+function slot(c, i) {
   const li = document.createElement("li"), b = document.createElement("button"), frame = document.createElement("span"),
     img = document.createElement("img"), name = document.createElement("span"), when = document.createElement("time");
   b.type = "button"; b.className = "slot";
@@ -80,7 +85,7 @@ function slot(c) {
   when.className = "when"; when.dateTime = c.date; when.textContent = niceDate(c.date);
   frame.className = "frame"; frame.append(img);
   b.append(frame, name, when); li.append(b);
-  b.addEventListener("click", () => openClip(c, b));
+  b.addEventListener("click", () => openClip(i));
   return li;
 }
 
@@ -88,7 +93,7 @@ function showTab(id) {
   for (const t of tabs.children) { const on = t.dataset.id === id; t.setAttribute("aria-selected", on); t.tabIndex = on ? 0 : -1; }
   $("panel").setAttribute("aria-labelledby", "tab-" + id);
   shown = id === "all" ? clips : clips.filter(c => c.collection === id);
-  grid.replaceChildren(...shown.map((c, i) => { const li = slot(c); li.style.setProperty("--i", i); return li; }));
+  grid.replaceChildren(...shown.map((c, i) => { const li = slot(c, i); li.style.setProperty("--i", i); return li; }));
   msg.textContent = shown.length ? "" : CONFIG.gallery.empty;
 }
 
@@ -115,7 +120,7 @@ function buildTabs(collections) {
 // ---- scene 3: clip player (the YouTube player loads only when a slot is clicked) ----
 // <dialog> gives us Esc to close, a focus trap and an inert page behind it for free.
 const player = $("player"), video = $("p-video");
-let yt = null, ytApi = null, lastSlot = null;
+let yt = null, ytApi = null, current = -1, openId = 0;
 
 function loadYouTubeApi() {
   ytApi ||= new Promise((ok, fail) => {
@@ -127,28 +132,55 @@ function loadYouTubeApi() {
   return ytApi;
 }
 
-function openClip(c, btn) {
-  lastSlot = btn;
-  if (yt) { yt.destroy(); yt = null; }
-  $("p-title").textContent = c.title; $("p-caption").textContent = c.caption || "";
-  const mount = document.createElement("div"); video.replaceChildren(mount);
-  if (!player.open) player.showModal();
-  $("p-close").focus();
-  loadYouTubeApi().then(() => {
-    if (!mount.isConnected) return; // closed or switched clip while the API was loading
-    yt = new YT.Player(mount, {
-      host: "https://www.youtube-nocookie.com", videoId: c.youtubeId, width: "100%", height: "100%",
-      playerVars: { autoplay: 1, start: c.startSeconds || 0, rel: 0, playsinline: 1 }
-    });
-  });
+function dropPlayer() { if (yt) { yt.destroy(); yt = null; } }
+
+// FR-8: when a video can't play here, show its caption (already under the video) and a link to YouTube
+function fallback(c) {
+  dropPlayer();
+  const box = document.createElement("div"), p = document.createElement("p"), a = document.createElement("a");
+  box.className = "p-fallback"; p.textContent = CONFIG.player.unavailable;
+  a.href = "https://www.youtube.com/watch?v=" + encodeURIComponent(c.youtubeId) + (c.startSeconds ? "&t=" + c.startSeconds + "s" : "");
+  a.target = "_blank"; a.rel = "noopener"; a.textContent = CONFIG.player.openOnYouTube;
+  box.append(p, a); video.replaceChildren(box);
 }
 
+function openClip(i) {
+  if (!shown.length) return;
+  current = (i + shown.length) % shown.length;
+  const c = shown[current], id = ++openId, live = () => id === openId && player.open;
+  dropPlayer();
+  $("p-title").textContent = c.title; $("p-caption").textContent = c.caption || "";
+  $("p-count").textContent = (current + 1) + " / " + shown.length;
+  $("p-nav").hidden = shown.length < 2;
+  const mount = document.createElement("div"); video.replaceChildren(mount);
+  if (!player.open) { player.showModal(); $("p-close").focus(); }
+  if (!/^[\w-]{11}$/.test(c.youtubeId || "")) return fallback(c);
+  // YouTube blocked or very slow: don't leave her looking at a black box
+  const timer = setTimeout(() => { if (live() && !yt) fallback(c); }, 10000);
+  loadYouTubeApi().then(() => {
+    clearTimeout(timer);
+    if (!live() || !mount.isConnected) return; // closed, switched clip, or already fell back
+    yt = new YT.Player(mount, {
+      host: "https://www.youtube-nocookie.com", videoId: c.youtubeId, width: "100%", height: "100%",
+      playerVars: { autoplay: 1, start: c.startSeconds || 0, rel: 0, playsinline: 1 },
+      events: { onError: () => setTimeout(() => { if (id === openId) fallback(c); }) } // bad id, removed, or embedding off
+    });
+  }).catch(() => { clearTimeout(timer); if (live()) fallback(c); });
+}
+
+$("p-prev").addEventListener("click", () => openClip(current - 1));
+$("p-next").addEventListener("click", () => openClip(current + 1));
+player.addEventListener("keydown", e => {
+  if (shown.length < 2 || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (e.key === "ArrowLeft") { e.preventDefault(); openClip(current - 1); }
+  if (e.key === "ArrowRight") { e.preventDefault(); openClip(current + 1); }
+});
 $("p-close").addEventListener("click", () => player.close());
 player.addEventListener("click", e => { if (e.target === player) player.close(); }); // click outside the box
 player.addEventListener("close", () => {
-  if (yt) { yt.destroy(); yt = null; }
+  openId++; dropPlayer();
   video.replaceChildren(); // never leave a player running in the background
-  if (lastSlot) lastSlot.focus();
+  const s = grid.querySelectorAll(".slot")[current]; if (s) s.focus(); // back to the clip she was on
 });
 
 fetch("clips.json")
