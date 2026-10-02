@@ -12,7 +12,7 @@
 <body>
 <div id="air" aria-hidden="true"></div>
 <button class="theme" id="theme" aria-label="Switch between colorful and minimal theme"></button>
-<main class="stage">
+<main class="stage" id="stage">
   <h1 id="title"></h1>
   <div class="scene" id="scene">
     <div class="book" aria-hidden="true"></div>
@@ -39,7 +39,15 @@
   </div>
   <p class="hint" id="hint"></p>
 </main>
-<div id="scene2"><p id="s2"></p></div>
+<section class="gallery" id="gallery" aria-labelledby="g-title" hidden>
+  <header class="g-head">
+    <h2 id="g-title" tabindex="-1"></h2>
+    <p class="g-sub" id="g-sub"></p>
+  </header>
+  <div class="tabs" id="tabs" role="tablist" aria-label="Collections"></div>
+  <p class="g-msg" id="g-msg" role="status"></p>
+  <div id="panel" role="tabpanel"><ul class="grid" id="grid"></ul></div>
+</section>
 <script src="script.js"></script>
 </body>
 </html>

@@ -4,11 +4,18 @@ const CONFIG = {
   hint: "A little something for you",
   letter: ["My love,", "Your message goes here: a memory, a promise, something only the two of us would understand.", "Always yours,", "(your name)"],
   button: "Continue",
-  scene2: "Our little inventory is opening soon…"
+  // the clips and collection names live in clips.json
+  gallery: {
+    title: "Our little inventory",
+    sub: "Pick a slot to play a memory",
+    all: "All",
+    empty: "Nothing in here yet.",
+    error: "The clips couldn't load. Check the internet connection and refresh the page."
+  }
 };
 const $ = id => document.getElementById(id);
-$("title").textContent = CONFIG.heading; $("hint").textContent = CONFIG.hint;
-$("go").textContent = CONFIG.button; $("s2").textContent = CONFIG.scene2;
+$("title").textContent = CONFIG.heading; $("hint").textContent = CONFIG.hint; $("go").textContent = CONFIG.button;
+$("g-title").textContent = CONFIG.gallery.title; $("g-sub").textContent = CONFIG.gallery.sub;
 CONFIG.letter.forEach(t => { const p = document.createElement("p"); p.textContent = t; $("text").appendChild(p); });
 
 // drifting dust and petals
@@ -40,11 +47,74 @@ $("seal").addEventListener("click", () => {
     }
   }, 2500);
 });
-// Scene 2 goes here later (gallery); for now a soft placeholder
+// Continue: the envelope fades and the inventory is unveiled
+const gallery = $("gallery");
 $("go").addEventListener("click", () => {
   scene.classList.add("gone");
-  setTimeout(() => $("scene2").classList.add("show"), 700);
+  $("stage").inert = true;
+  setTimeout(() => {
+    gallery.hidden = false; void gallery.offsetWidth; gallery.classList.add("show");
+    $("g-title").focus({ preventScroll: true });
+  }, 700);
 });
+
+// ---- scene 2: clip inventory (all clip data comes from clips.json) ----
+const tabs = $("tabs"), grid = $("grid"), msg = $("g-msg");
+let clips = [], shown = [];
+const thumb = id => "https://img.youtube.com/vi/" + encodeURIComponent(id) + "/hqdefault.jpg";
+const niceDate = d => { const t = new Date(d + "T00:00:00"); return isNaN(t) ? d : t.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }); };
+
+function slot(c) {
+  const li = document.createElement("li"), b = document.createElement("button"), frame = document.createElement("span"),
+    img = document.createElement("img"), name = document.createElement("span"), when = document.createElement("time");
+  b.type = "button"; b.className = "slot";
+  img.className = "thumb"; img.alt = ""; img.loading = "lazy"; img.decoding = "async"; img.width = 480; img.height = 360;
+  // YouTube answers unknown ids with a 120px grey stand-in; treat that like a missing thumbnail
+  img.addEventListener("load", () => { if (img.naturalWidth <= 120) b.classList.add("no-thumb"); });
+  img.addEventListener("error", () => b.classList.add("no-thumb"));
+  img.src = thumb(c.youtubeId);
+  name.className = "name"; name.textContent = c.title;
+  when.className = "when"; when.dateTime = c.date; when.textContent = niceDate(c.date);
+  frame.className = "frame"; frame.append(img);
+  b.append(frame, name, when); li.append(b);
+  return li; // the player (scene 3) hooks into these buttons next
+}
+
+function showTab(id) {
+  for (const t of tabs.children) { const on = t.dataset.id === id; t.setAttribute("aria-selected", on); t.tabIndex = on ? 0 : -1; }
+  $("panel").setAttribute("aria-labelledby", "tab-" + id);
+  shown = id === "all" ? clips : clips.filter(c => c.collection === id);
+  grid.replaceChildren(...shown.map(slot));
+  msg.textContent = shown.length ? "" : CONFIG.gallery.empty;
+}
+
+function buildTabs(collections) {
+  for (const c of [{ id: "all", title: CONFIG.gallery.all }, ...collections]) {
+    const t = document.createElement("button");
+    t.type = "button"; t.setAttribute("role", "tab"); t.id = "tab-" + c.id; t.dataset.id = c.id; t.className = "tab";
+    t.setAttribute("aria-controls", "panel");
+    if (c.icon) { const i = document.createElement("span"); i.setAttribute("aria-hidden", "true"); i.textContent = c.icon + " "; t.append(i); }
+    t.append(c.title);
+    t.addEventListener("click", () => showTab(c.id));
+    tabs.append(t);
+  }
+  // arrow keys move between tabs (WAI-ARIA tabs pattern)
+  tabs.addEventListener("keydown", e => {
+    const list = [...tabs.children], i = list.indexOf(document.activeElement);
+    const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: list.length - 1 }[e.key];
+    if (i < 0 || next === undefined) return;
+    e.preventDefault();
+    const t = list[(next + list.length) % list.length]; t.focus(); t.click();
+  });
+}
+
+fetch("clips.json")
+  .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+  .then(data => { clips = data.clips || []; buildTabs(data.collections || []); showTab("all"); })
+  .catch(err => {
+    console.error("clips.json could not be loaded. Open the site through a local server (see README).", err);
+    msg.textContent = CONFIG.gallery.error;
+  });
 
 // theme toggle (colorful <-> minimal neutral); with no saved choice the CSS follows the system setting
 const root = document.documentElement, tbtn = $("theme"), sysDark = matchMedia("(prefers-color-scheme: dark)");
