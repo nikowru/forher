@@ -37,12 +37,15 @@ $("go").addEventListener("click", () => {
   setTimeout(() => $("scene2").classList.add("show"), 700);
 });
 
-// theme toggle (colorful <-> minimal neutral); the starting theme is set in <head>
-const root = document.documentElement, tbtn = $("theme");
-function paint() { const d = root.dataset.theme === "dark"; tbtn.textContent = d ? "\u2600" : "\u263E"; tbtn.setAttribute("aria-pressed", d); }
+// theme toggle (colorful <-> minimal neutral); with no saved choice the CSS follows the system setting
+const root = document.documentElement, tbtn = $("theme"), sysDark = matchMedia("(prefers-color-scheme: dark)");
+try { const t = localStorage.getItem("theme"); if (t === "light" || t === "dark") root.dataset.theme = t; } catch (e) {}
+const isDark = () => root.dataset.theme ? root.dataset.theme === "dark" : sysDark.matches;
+function paint() { const d = isDark(); tbtn.textContent = d ? "\u2600" : "\u263E"; tbtn.setAttribute("aria-pressed", d); }
 tbtn.addEventListener("click", () => {
-  root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+  root.dataset.theme = isDark() ? "light" : "dark";
   try { localStorage.setItem("theme", root.dataset.theme); } catch (e) {}
   paint();
 });
+sysDark.addEventListener("change", paint);
 paint();

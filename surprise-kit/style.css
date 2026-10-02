@@ -4,12 +4,21 @@
  --sh:34,87,94;--glow:rgba(190,235,227,.6);--env1:#f0edda;--env2:#bec4a7;--flap1:#f0edda;--flap2:#bec4a7;--flap3:#b4a87f;
  --el:#bec4a7;--eb:#f0edda;--btn:#22575e;--btn-text:#f0edda;--speck:#f0edda;--petal:#beebe3;
  --fl-head:#f0edda;--fl-stem:#898452;--fl-tape:#b4a87f;--bk1:#b4a87f;--bk2:#f0edda;--bk3:#898452;
+ /* shared by both themes: red wax seal, envelope edges, focus ring */
+ --seal-hi:#e0616b;--seal:#c4444f;--seal-lo:#8d2634;--seal-shadow:rgba(80,20,30,.45);--seal-shade:rgba(60,10,20,.4);--seal-gloss:rgba(255,180,180,.4);
+ --seal-ring:rgba(255,235,225,.75);--seal-rim:rgba(255,190,190,.35);--seal-mark:rgba(140,30,45,.35);--seal-line:rgba(255,205,205,.8);
+ --env-edge:rgba(150,110,80,.28);--focus:#fff;
  color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-/* Dark / Minimal Neutral (--sh 17,24,39 = proposed #111827 until the 5th swatch is confirmed) */
+/* Dark / Minimal Neutral (--sh 17,24,39 = proposed #111827 until the 5th swatch is confirmed).
+   Same values twice: the toggle sets data-theme="dark"; with no saved choice the system setting decides. */
 :root[data-theme="dark"]{--bg:#374151;--bg-hi:color-mix(in srgb,#374151,#6b7280 30%);--head:#f3f4f6;--hint:#d1d5db;--ink:#374151;--paper:#f3f4f6;--rule:rgba(55,65,81,.2);
  --sh:17,24,39;--glow:rgba(209,213,219,.16);--env1:#d1d5db;--env2:#6b7280;--flap1:#d1d5db;--flap2:#9ca3af;--flap3:#6b7280;
  --el:#6b7280;--eb:#d1d5db;--btn:#374151;--btn-text:#f3f4f6;--speck:#d1d5db;--petal:#d1d5db;
  --fl-head:#d1d5db;--fl-stem:#6b7280;--fl-tape:#6b7280;--bk1:#6b7280;--bk2:#d1d5db;--bk3:#374151;color-scheme:dark}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#374151;--bg-hi:color-mix(in srgb,#374151,#6b7280 30%);--head:#f3f4f6;--hint:#d1d5db;--ink:#374151;--paper:#f3f4f6;--rule:rgba(55,65,81,.2);
+ --sh:17,24,39;--glow:rgba(209,213,219,.16);--env1:#d1d5db;--env2:#6b7280;--flap1:#d1d5db;--flap2:#9ca3af;--flap3:#6b7280;
+ --el:#6b7280;--eb:#d1d5db;--btn:#374151;--btn-text:#f3f4f6;--speck:#d1d5db;--petal:#d1d5db;
+ --fl-head:#d1d5db;--fl-stem:#6b7280;--fl-tape:#6b7280;--bk1:#6b7280;--bk2:#d1d5db;--bk3:#374151;color-scheme:dark}}
 html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;height:100%;background:radial-gradient(ellipse at 50% 35%,var(--bg-hi),var(--bg) 70%),var(--bg);overflow:hidden;color:var(--ink);font-family:'Cormorant Garamond',Georgia,serif}
 /* paper grain + vignette */
@@ -48,18 +57,21 @@ h1{margin:0;font:400 clamp(2.6rem,min(8vw,13vh),7rem)/1.05 'Pinyon Script',cursi
 /* wax seal */
 .seal{position:absolute;left:50%;top:56%;z-index:7;width:calc(var(--w)*.17);aspect-ratio:1;padding:0;border:0;cursor:pointer;
  transform:translate(-50%,-50%);border-radius:52% 48% 50% 50%/50% 52% 48% 50%;
- background:radial-gradient(circle at 35% 30%,#e0616b,#c4444f 45%,#8d2634);
- box-shadow:0 6px 12px rgba(80,20,30,.45),inset 0 -4px 8px rgba(60,10,20,.4),inset 0 3px 6px rgba(255,180,180,.4)}
-.seal::before{content:"";position:absolute;inset:-6%;border-radius:50%;border:2px solid rgba(255,235,225,.75);animation:ring 2.4s ease-out infinite}
-.seal::after{content:"";position:absolute;inset:14%;border-radius:50%;border:1.5px solid rgba(255,190,190,.35)}
-.seal svg{position:absolute;inset:18%;width:64%;height:64%}
+ background:radial-gradient(circle at 35% 30%,var(--seal-hi),var(--seal) 45%,var(--seal-lo));
+ box-shadow:0 6px 12px var(--seal-shadow),inset 0 -4px 8px var(--seal-shade),inset 0 3px 6px var(--seal-gloss)}
+.seal::before{content:"";position:absolute;inset:-6%;border-radius:50%;border:2px solid var(--seal-ring);animation:ring 2.4s ease-out infinite}
+.seal::after{content:"";position:absolute;inset:14%;border-radius:50%;border:1.5px solid var(--seal-rim)}
+.seal svg{position:absolute;inset:18%;width:64%;height:64%;fill:var(--seal-mark);stroke:var(--seal-line)}
 .seal.broken{animation:snap .8s ease-in forwards;opacity:0;pointer-events:none}
 .seal.broken::before{display:none}
 @keyframes ring{from{transform:scale(1);opacity:.8}to{transform:scale(1.55);opacity:0}}
 @keyframes snap{0%{transform:translate(-50%,-50%);opacity:1}25%{transform:translate(-50%,-50%) scale(1.15) rotate(-5deg);opacity:1}100%{transform:translate(-50%,-5%) rotate(20deg) scale(.9);opacity:0}}
-.seal:focus-visible,.go:focus-visible{outline:3px solid #fff;outline-offset:4px}
+.seal:focus-visible,.go:focus-visible{outline:3px solid var(--focus);outline-offset:4px}
 /* decor */
 .flowers{position:absolute;left:-19%;bottom:-6%;width:31%;z-index:5;pointer-events:none;filter:drop-shadow(0 6px 8px rgba(var(--sh),.3))}
+.flowers use{fill:var(--fl-head)}
+.flowers .stems{stroke:var(--fl-stem)}
+.flowers .tape{fill:var(--fl-tape)}
 .book{position:absolute;right:-20%;bottom:-3%;width:27%;aspect-ratio:.78;z-index:0;transform:rotate(9deg);border-radius:3px;overflow:hidden;
  background:linear-gradient(90deg,var(--bk1),var(--bk2) 46%,var(--bk3) 50%,var(--bk2) 54%,var(--bk1));box-shadow:0 12px 20px rgba(var(--sh),.38)}
 .book::before,.book::after{content:"";position:absolute;top:12%;bottom:12%;width:36%;background:repeating-linear-gradient(rgba(var(--sh),.42) 0 2px,transparent 2px 7px)}
@@ -71,8 +83,9 @@ h1{margin:0;font:400 clamp(2.6rem,min(8vw,13vh),7rem)/1.05 'Pinyon Script',cursi
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01ms!important}#air{display:none}}
 
 /* envelope front pieces + theme toggle */
+.front polygon{stroke:var(--env-edge);stroke-width:.3}
 .front polygon:nth-child(-n+2){fill:var(--el)}
 .front polygon:nth-child(3){fill:var(--eb)}
 .theme{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:16px;z-index:40;width:42px;height:42px;border-radius:50%;border:1.5px solid var(--head);background:transparent;color:var(--head);font-size:1.25rem;line-height:1;cursor:pointer}
 .theme:hover{background:rgba(var(--sh),.15)}
-.theme:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.theme:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
