@@ -1,7 +1,7 @@
 // ---- Edit all wording here ----
 const CONFIG = {
   heading: "Would You Like To Open?",
-  hint: "For my baby, my aki, my asawa, my duo, my safe space, i love you. <3",
+  hint: "A little something for you",
   letter: ["My love,", "Your message goes here: a memory, a promise, something only the two of us would understand.", "Always yours,", "(your name)"],
   button: "Continue",
   scene2: "Our little inventory is opening soon…"
