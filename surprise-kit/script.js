@@ -39,7 +39,7 @@ for (let i = 0; i < 18; i++) {
 const scene = $("scene"); let opened = false;
 $("seal").addEventListener("click", () => {
   if (opened) return; opened = true;
-  $("seal").classList.add("broken");
+  $("seal").classList.add("broken"); $("seal").disabled = true; // gone from view, so gone from the Tab order too
   setTimeout(() => scene.classList.add("open"), 350);
   setTimeout(() => scene.classList.add("flapback"), 800);
   setTimeout(() => { scene.classList.add("rise"); $("title").classList.add("fade"); $("hint").classList.add("fade"); }, 1250);
@@ -52,6 +52,9 @@ $("seal").addEventListener("click", () => {
       const more = () => text.classList.toggle("more", text.scrollTop + text.clientHeight < text.scrollHeight - 2);
       text.addEventListener("scroll", more, { passive: true }); more();
     }
+    // the letter only becomes reachable once it can be read; keyboard focus lands on it
+    $("letter").inert = false;
+    (text.tabIndex === 0 ? text : $("go")).focus({ preventScroll: true });
   }, 2500);
 });
 // Continue: the envelope fades and the inventory is unveiled
