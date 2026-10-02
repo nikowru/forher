@@ -8,7 +8,7 @@
  /* shared by both themes: red wax seal, envelope edges, focus ring */
  --seal-hi:#e0616b;--seal:#c4444f;--seal-lo:#8d2634;--seal-shadow:rgba(80,20,30,.45);--seal-shade:rgba(60,10,20,.4);--seal-gloss:rgba(255,180,180,.4);
  --seal-ring:rgba(255,235,225,.75);--seal-rim:rgba(255,190,190,.35);--seal-mark:rgba(140,30,45,.35);--seal-line:rgba(255,205,205,.8);
- --env-edge:rgba(150,110,80,.28);--focus:#fff;
+ --env-edge:rgba(150,110,80,.28);--focus:#fff;--screen:#0b0f14;--backdrop:rgba(34,87,94,.82);
  color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 /* Dark / Minimal Neutral (--sh 17,24,39 = proposed #111827 until the 5th swatch is confirmed).
    Same values twice: the toggle sets data-theme="dark"; with no saved choice the system setting decides. */
@@ -16,12 +16,12 @@
  --sh:17,24,39;--glow:rgba(209,213,219,.16);--env1:#d1d5db;--env2:#6b7280;--flap1:#d1d5db;--flap2:#9ca3af;--flap3:#6b7280;
  --el:#6b7280;--eb:#d1d5db;--btn:#374151;--btn-text:#f3f4f6;--speck:#d1d5db;--petal:#d1d5db;
  --fl-head:#d1d5db;--fl-stem:#6b7280;--fl-tape:#6b7280;--bk1:#6b7280;--bk2:#d1d5db;--bk3:#374151;
- --slot:color-mix(in srgb,#374151,#6b7280 35%);--slot-ink:#f3f4f6;--slot-muted:#d1d5db;--slot-edge:#6b7280;--tab:transparent;--tab-ink:#f3f4f6;--tab-on:#f3f4f6;--tab-on-ink:#374151;--accent:#d1d5db;--bevel:rgba(243,244,246,.12);color-scheme:dark}
+ --slot:color-mix(in srgb,#374151,#6b7280 35%);--slot-ink:#f3f4f6;--slot-muted:#d1d5db;--slot-edge:#6b7280;--tab:transparent;--tab-ink:#f3f4f6;--tab-on:#f3f4f6;--tab-on-ink:#374151;--accent:#d1d5db;--bevel:rgba(243,244,246,.12);--backdrop:rgba(17,24,39,.85);color-scheme:dark}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#374151;--bg-hi:color-mix(in srgb,#374151,#6b7280 30%);--head:#f3f4f6;--hint:#d1d5db;--ink:#374151;--paper:#f3f4f6;--rule:rgba(55,65,81,.2);
  --sh:17,24,39;--glow:rgba(209,213,219,.16);--env1:#d1d5db;--env2:#6b7280;--flap1:#d1d5db;--flap2:#9ca3af;--flap3:#6b7280;
  --el:#6b7280;--eb:#d1d5db;--btn:#374151;--btn-text:#f3f4f6;--speck:#d1d5db;--petal:#d1d5db;
  --fl-head:#d1d5db;--fl-stem:#6b7280;--fl-tape:#6b7280;--bk1:#6b7280;--bk2:#d1d5db;--bk3:#374151;
- --slot:color-mix(in srgb,#374151,#6b7280 35%);--slot-ink:#f3f4f6;--slot-muted:#d1d5db;--slot-edge:#6b7280;--tab:transparent;--tab-ink:#f3f4f6;--tab-on:#f3f4f6;--tab-on-ink:#374151;--accent:#d1d5db;--bevel:rgba(243,244,246,.12);color-scheme:dark}}
+ --slot:color-mix(in srgb,#374151,#6b7280 35%);--slot-ink:#f3f4f6;--slot-muted:#d1d5db;--slot-edge:#6b7280;--tab:transparent;--tab-ink:#f3f4f6;--tab-on:#f3f4f6;--tab-on-ink:#374151;--accent:#d1d5db;--bevel:rgba(243,244,246,.12);--backdrop:rgba(17,24,39,.85);color-scheme:dark}}
 html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;height:100%;background:radial-gradient(ellipse at 50% 35%,var(--bg-hi),var(--bg) 70%),var(--bg);overflow:hidden;color:var(--ink);font-family:'Cormorant Garamond',Georgia,serif}
 /* paper grain + vignette */
@@ -130,6 +130,22 @@ h1{margin:0;font:400 clamp(2.6rem,min(8vw,13vh),7rem)/1.05 'Pinyon Script',cursi
 .name{font-weight:600;font-size:1.15rem;line-height:1.2}
 .when{font-style:italic;font-size:1rem;color:var(--slot-muted)}
 .tab:focus-visible,.slot:focus-visible{outline:3px solid var(--head);outline-offset:3px}
+/* scene 3: clip player */
+html:has(.player[open]) .gallery{overflow:hidden}
+.player{width:min(960px,92vw);max-height:94vh;padding:0;border:0;background:transparent;color:var(--ink);overflow:visible}
+.player::backdrop{background:var(--backdrop);backdrop-filter:blur(3px)}
+.player[open]{animation:pop .35s cubic-bezier(.2,.8,.3,1)}
+@keyframes pop{from{opacity:0;transform:translateY(16px) scale(.97)}}
+.p-box{position:relative;padding:14px 14px 16px;border-radius:8px;background:var(--paper);box-shadow:0 30px 60px -20px rgba(var(--sh),.7)}
+.p-video{aspect-ratio:16/9;max-height:calc(94vh - 9rem);margin:0 auto;border-radius:4px;overflow:hidden;background:var(--screen)}
+.p-video iframe{display:block;width:100%;height:100%;border:0}
+.p-info{padding:.8rem .4rem 0}
+.p-info h3{margin:0;font:400 clamp(1.8rem,3vw,2.4rem)/1.1 'Pinyon Script',cursive;color:var(--btn)}
+.p-info p{margin:.3rem 0 0;font-style:italic;font-weight:500;font-size:1.2rem;color:var(--ink)}
+.p-close{position:absolute;top:-16px;right:-16px;z-index:1;width:42px;height:42px;border-radius:50%;border:0;cursor:pointer;
+ font-size:1.6rem;line-height:1;color:var(--btn-text);background:var(--btn);box-shadow:0 4px 12px rgba(var(--sh),.5)}
+.p-close:hover{filter:brightness(1.25)}
+.p-close:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01ms!important}#air{display:none}
  .gallery{clip-path:none!important;transition:opacity .6s!important}}
 
