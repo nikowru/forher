@@ -1,0 +1,16 @@
+{
+  "collections": [
+    { "id": "a", "title": "Collection A", "icon": "🎞️" },
+    { "id": "b", "title": "Collection B", "icon": "🎞️" }
+  ],
+  "clips": [
+    { "id": "c001", "youtubeId": "XXXXXXXXXXX", "title": "Clip 1", "date": "2000-01-01", "caption": "Add a memory", "collection": "a", "startSeconds": 0 },
+    { "id": "c002", "youtubeId": "XXXXXXXXXXX", "title": "Clip 2", "date": "2000-01-01", "caption": "Add a memory", "collection": "a", "startSeconds": 0 },
+    { "id": "c003", "youtubeId": "XXXXXXXXXXX", "title": "Clip 3", "date": "2000-01-01", "caption": "Add a memory", "collection": "a", "startSeconds": 0 },
+    { "id": "c004", "youtubeId": "XXXXXXXXXXX", "title": "Clip 4", "date": "2000-01-01", "caption": "Add a memory", "collection": "a", "startSeconds": 0 },
+    { "id": "c005", "youtubeId": "XXXXXXXXXXX", "title": "Clip 5", "date": "2000-01-01", "caption": "Add a memory", "collection": "b", "startSeconds": 0 },
+    { "id": "c006", "youtubeId": "XXXXXXXXXXX", "title": "Clip 6", "date": "2000-01-01", "caption": "Add a memory", "collection": "b", "startSeconds": 0 },
+    { "id": "c007", "youtubeId": "XXXXXXXXXXX", "title": "Clip 7", "date": "2000-01-01", "caption": "Add a memory", "collection": "b", "startSeconds": 0 },
+    { "id": "c008", "youtubeId": "XXXXXXXXXXX", "title": "Clip 8", "date": "2000-01-01", "caption": "Add a memory", "collection": "b", "startSeconds": 0 }
+  ]
+}
