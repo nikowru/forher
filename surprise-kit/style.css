@@ -4,7 +4,7 @@
  --sh:34,87,94;--glow:rgba(190,235,227,.6);--env1:#f0edda;--env2:#bec4a7;--flap1:#f0edda;--flap2:#bec4a7;--flap3:#b4a87f;
  --el:#bec4a7;--eb:#f0edda;--btn:#22575e;--btn-text:#f0edda;--speck:#f0edda;--petal:#beebe3;
  --fl-head:#f0edda;--fl-stem:#898452;--fl-tape:#b4a87f;--bk1:#b4a87f;--bk2:#f0edda;--bk3:#898452;
- --slot:#86d3ce;--slot-ink:#5c4130;--slot-muted:#5c4130;--slot-edge:#22575e;--tab:#beebe3;--tab-ink:#22575e;--tab-on:#22575e;--tab-on-ink:#f0edda;
+ --slot:#86d3ce;--slot-ink:#5c4130;--slot-muted:#5c4130;--slot-edge:#22575e;--tab:#beebe3;--tab-ink:#22575e;--tab-on:#22575e;--tab-on-ink:#f0edda;--accent:#2fd5d6;--bevel:rgba(240,237,218,.55);
  /* shared by both themes: red wax seal, envelope edges, focus ring */
  --seal-hi:#e0616b;--seal:#c4444f;--seal-lo:#8d2634;--seal-shadow:rgba(80,20,30,.45);--seal-shade:rgba(60,10,20,.4);--seal-gloss:rgba(255,180,180,.4);
  --seal-ring:rgba(255,235,225,.75);--seal-rim:rgba(255,190,190,.35);--seal-mark:rgba(140,30,45,.35);--seal-line:rgba(255,205,205,.8);
@@ -16,12 +16,12 @@
  --sh:17,24,39;--glow:rgba(209,213,219,.16);--env1:#d1d5db;--env2:#6b7280;--flap1:#d1d5db;--flap2:#9ca3af;--flap3:#6b7280;
  --el:#6b7280;--eb:#d1d5db;--btn:#374151;--btn-text:#f3f4f6;--speck:#d1d5db;--petal:#d1d5db;
  --fl-head:#d1d5db;--fl-stem:#6b7280;--fl-tape:#6b7280;--bk1:#6b7280;--bk2:#d1d5db;--bk3:#374151;
- --slot:color-mix(in srgb,#374151,#6b7280 35%);--slot-ink:#f3f4f6;--slot-muted:#d1d5db;--slot-edge:#6b7280;--tab:transparent;--tab-ink:#f3f4f6;--tab-on:#f3f4f6;--tab-on-ink:#374151;color-scheme:dark}
+ --slot:color-mix(in srgb,#374151,#6b7280 35%);--slot-ink:#f3f4f6;--slot-muted:#d1d5db;--slot-edge:#6b7280;--tab:transparent;--tab-ink:#f3f4f6;--tab-on:#f3f4f6;--tab-on-ink:#374151;--accent:#d1d5db;--bevel:rgba(243,244,246,.12);color-scheme:dark}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#374151;--bg-hi:color-mix(in srgb,#374151,#6b7280 30%);--head:#f3f4f6;--hint:#d1d5db;--ink:#374151;--paper:#f3f4f6;--rule:rgba(55,65,81,.2);
  --sh:17,24,39;--glow:rgba(209,213,219,.16);--env1:#d1d5db;--env2:#6b7280;--flap1:#d1d5db;--flap2:#9ca3af;--flap3:#6b7280;
  --el:#6b7280;--eb:#d1d5db;--btn:#374151;--btn-text:#f3f4f6;--speck:#d1d5db;--petal:#d1d5db;
  --fl-head:#d1d5db;--fl-stem:#6b7280;--fl-tape:#6b7280;--bk1:#6b7280;--bk2:#d1d5db;--bk3:#374151;
- --slot:color-mix(in srgb,#374151,#6b7280 35%);--slot-ink:#f3f4f6;--slot-muted:#d1d5db;--slot-edge:#6b7280;--tab:transparent;--tab-ink:#f3f4f6;--tab-on:#f3f4f6;--tab-on-ink:#374151;color-scheme:dark}}
+ --slot:color-mix(in srgb,#374151,#6b7280 35%);--slot-ink:#f3f4f6;--slot-muted:#d1d5db;--slot-edge:#6b7280;--tab:transparent;--tab-ink:#f3f4f6;--tab-on:#f3f4f6;--tab-on-ink:#374151;--accent:#d1d5db;--bevel:rgba(243,244,246,.12);color-scheme:dark}}
 html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;height:100%;background:radial-gradient(ellipse at 50% 35%,var(--bg-hi),var(--bg) 70%),var(--bg);overflow:hidden;color:var(--ink);font-family:'Cormorant Garamond',Georgia,serif}
 /* paper grain + vignette */
@@ -86,8 +86,14 @@ h1{margin:0;font:400 clamp(2.6rem,min(8vw,13vh),7rem)/1.05 'Pinyon Script',cursi
 .book::before,.book::after{content:"";position:absolute;top:12%;bottom:12%;width:36%;background:repeating-linear-gradient(rgba(var(--sh),.42) 0 2px,transparent 2px 7px)}
 .book::before{left:9%}.book::after{right:9%}
 /* scene 2: clip inventory */
-.gallery{position:fixed;inset:0;z-index:12;overflow-y:auto;padding:clamp(2rem,6vh,4rem) 4vw 4rem;box-sizing:border-box;opacity:0;transition:opacity 1.2s}
-.gallery.show{opacity:1}
+/* unveil: a soft wash opens from the middle like a curtain of light, then the slots ripple in */
+.gallery{position:fixed;inset:0;z-index:12;overflow-y:auto;padding:clamp(2rem,6vh,4rem) 4vw 4rem;box-sizing:border-box;
+ background:radial-gradient(ellipse at 50% 40%,var(--bg-hi),transparent 75%);
+ opacity:0;clip-path:circle(0% at 50% 45%);transition:opacity .9s,clip-path 1.3s cubic-bezier(.6,0,.2,1)}
+.gallery.show{opacity:1;clip-path:circle(100% at 50% 45%)}
+.gallery.settled{clip-path:none}
+.gallery.show .g-head{animation:head-in .9s .35s both}
+@keyframes head-in{from{opacity:0;transform:translateY(-12px)}}
 .g-head{text-align:center;margin-bottom:1.4rem}
 .g-head h2{margin:0;font:400 clamp(2.4rem,5vw,4.2rem)/1.15 'Pinyon Script',cursive;color:var(--head);text-shadow:0 2px 14px rgba(var(--sh),.28)}
 .g-head h2:focus{outline:none}
@@ -97,18 +103,35 @@ h1{margin:0;font:400 clamp(2.6rem,min(8vw,13vh),7rem)/1.05 'Pinyon Script',cursi
 .tab[aria-selected="true"]{color:var(--tab-on-ink);background:var(--tab-on);border-color:var(--tab-on)}
 .g-msg{text-align:center;font-style:italic;font-size:1.2rem;color:var(--hint);margin:0}
 .g-msg:empty{display:none}
-.grid{list-style:none;margin:0 auto;padding:0;max-width:1200px;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:16px}
-.slot{display:flex;flex-direction:column;width:100%;height:100%;padding:8px 8px 10px;gap:.2rem;text-align:left;cursor:pointer;
+.grid{list-style:none;margin:0 auto;padding:0;max-width:1200px;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:16px;counter-reset:slot}
+/* each slot ripples in; the stagger is capped so a long list never waits */
+.grid li{counter-increment:slot;animation:slot-in .55s cubic-bezier(.2,.8,.3,1) both;animation-delay:calc(var(--base,.1s) + min(var(--i,0),16) * 45ms)}
+.gallery:not(.settled){--base:.65s}
+@keyframes slot-in{from{opacity:0;transform:translateY(14px) scale(.96)}}
+/* inventory cell: bevelled frame, numbered tag, glow on hover/focus */
+.slot{position:relative;display:flex;flex-direction:column;width:100%;height:100%;padding:8px 8px 10px;gap:.2rem;text-align:left;cursor:pointer;
  font-family:'Cormorant Garamond',Georgia,serif;color:var(--slot-ink);background:var(--slot);border:2px solid var(--slot-edge);border-radius:8px;
- box-shadow:inset 0 0 0 3px rgba(var(--sh),.12),0 6px 14px -6px rgba(var(--sh),.45);transition:transform .2s,box-shadow .2s}
-.slot:hover{transform:translateY(-3px);box-shadow:inset 0 0 0 3px rgba(var(--sh),.12),0 12px 20px -8px rgba(var(--sh),.55)}
-.frame{display:block;aspect-ratio:16/9;overflow:hidden;border-radius:4px;background:rgba(var(--sh),.18);margin-bottom:.35rem}
+ box-shadow:inset 2px 2px 0 var(--bevel),inset -2px -2px 0 rgba(var(--sh),.22),0 6px 14px -6px rgba(var(--sh),.45);transition:transform .2s,box-shadow .2s,border-color .2s}
+.slot:hover,.slot:focus-visible{transform:translateY(-3px);border-color:var(--accent);
+ box-shadow:inset 2px 2px 0 var(--bevel),inset -2px -2px 0 rgba(var(--sh),.22),0 0 0 3px color-mix(in srgb,var(--accent) 45%,transparent),0 12px 20px -8px rgba(var(--sh),.55)}
+.slot::before{content:counter(slot,decimal-leading-zero) / "";position:absolute;top:8px;left:8px;z-index:1;padding:0 .5em;
+ font:italic 600 .85rem/1.5 'Cormorant Garamond',Georgia,serif;color:var(--tab-on-ink);background:var(--tab-on);border-radius:4px 0 6px 0}
+.frame{position:relative;display:block;aspect-ratio:16/9;overflow:hidden;border-radius:4px;background:rgba(var(--sh),.18);margin-bottom:.35rem;
+ box-shadow:inset 0 0 0 1px rgba(var(--sh),.25)}
 .thumb{display:block;width:100%;height:100%;object-fit:cover}
+/* play badge: shows on hover/focus, always (dimmer) on an empty slot */
+.frame::before,.frame::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);opacity:0;transition:opacity .2s}
+.frame::after{width:42px;height:42px;border-radius:50%;background:var(--tab-on);box-shadow:0 3px 10px rgba(var(--sh),.4)}
+.frame::before{z-index:1;margin-left:2px;border-left:13px solid var(--tab-on-ink);border-top:8px solid transparent;border-bottom:8px solid transparent}
+.slot:hover .frame::before,.slot:hover .frame::after,.slot:focus-visible .frame::before,.slot:focus-visible .frame::after{opacity:1}
 .no-thumb .thumb{visibility:hidden}
+.no-thumb .frame{background:repeating-linear-gradient(135deg,rgba(var(--sh),.14) 0 6px,transparent 6px 13px),rgba(var(--sh),.08)}
+.no-thumb .frame::before,.no-thumb .frame::after{opacity:.55}
 .name{font-weight:600;font-size:1.15rem;line-height:1.2}
 .when{font-style:italic;font-size:1rem;color:var(--slot-muted)}
 .tab:focus-visible,.slot:focus-visible{outline:3px solid var(--head);outline-offset:3px}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01ms!important}#air{display:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01ms!important}#air{display:none}
+ .gallery{clip-path:none!important;transition:opacity .6s!important}}
 
 /* envelope front pieces + theme toggle */
 .front polygon{stroke:var(--env-edge);stroke-width:.3}

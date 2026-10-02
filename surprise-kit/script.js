@@ -55,6 +55,7 @@ $("go").addEventListener("click", () => {
   setTimeout(() => {
     gallery.hidden = false; void gallery.offsetWidth; gallery.classList.add("show");
     $("g-title").focus({ preventScroll: true });
+    setTimeout(() => gallery.classList.add("settled"), 2000); // drop the reveal mask; later tab switches ripple without the wait
   }, 700);
 });
 
@@ -84,7 +85,7 @@ function showTab(id) {
   for (const t of tabs.children) { const on = t.dataset.id === id; t.setAttribute("aria-selected", on); t.tabIndex = on ? 0 : -1; }
   $("panel").setAttribute("aria-labelledby", "tab-" + id);
   shown = id === "all" ? clips : clips.filter(c => c.collection === id);
-  grid.replaceChildren(...shown.map(slot));
+  grid.replaceChildren(...shown.map((c, i) => { const li = slot(c); li.style.setProperty("--i", i); return li; }));
   msg.textContent = shown.length ? "" : CONFIG.gallery.empty;
 }
 
