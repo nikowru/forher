@@ -1,0 +1,3 @@
+# Private surprise site: please don't index anything.
+User-agent: *
+Disallow: /
