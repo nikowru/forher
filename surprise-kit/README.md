@@ -1,25 +1,42 @@
 # Would You Like To Open?
 
-A private one-page surprise: she signs up, an intro plays, she clicks the wax seal, reads the letter, writes a reply, then the page lights up to reveal an inventory of video clips that play right inside the page.
+A private four-page surprise: she signs up, an intro plays, she clicks the wax seal, reads the letter, writes a reply, then the page lights up and opens an inventory of video clips that play right inside the page.
 
 Plain HTML, CSS and JavaScript. There's no build step and nothing to install for the site itself. One optional piece — a Google Sheet, for saving her sign-up/reply and for editing the clip inventory without redeploying — is covered in its own section below.
 
+### Pages
+
+She moves through them in order, and each one unlocks the next. Opening one early just redirects her back to where she should be.
+
+| Page | What it is |
+|---|---|
+| `index.html` | The sign-up: her name, mood, icon, music, and the Yes/No question |
+| `letter.html` | The dimmed intro, the envelope and seal, the letter, and her reply |
+| `memories.html` | The clip inventory, with collection tabs and the video player |
+| `inbox.html` | What she wrote, kept for her to re-read |
+
+### Everything else
+
 | File | What it holds |
 |---|---|
-| `index.html` | Page structure only |
-| `style.css` | All styling. Both color themes are CSS variables at the top. |
-| `script.js` | All behavior. The `CONFIG` block at the top holds every piece of wording. |
+| `style.css` | All styling for every page. Both color themes are CSS variables at the top. |
+| `js/config.js` | **Edit wording here.** The `CONFIG` block, plus the `ICONS`, `MOODS` and `MUSIC` lists and the No-button tunables. |
+| `js/common.js` | Shared behavior: storage, progress and page guards, music across pages, the header and footer, page fades, `?reset=1` |
+| `js/signup.js`, `js/letter.js`, `js/memories.js`, `js/inbox.js` | One file per page, loaded only by that page |
 | `clips.json` | Fallback clip list, used if the Memories sheet isn't set up (or its fetch fails) |
 | `assets/icons/` | Icon images for the sign-up "choose an icon" step |
 | `assets/music/` | Audio tracks for the sign-up "choose your music" step |
+| `assets/favicon.svg` | The little envelope in the tab |
 | `backend/Code.gs` | The optional Google Apps Script source — see "Save her answers to a Google Sheet" below |
 | `backend/SETUP.md` | Step-by-step setup for the Sheet + Apps Script |
 | `robots.txt` | Asks search engines to stay away |
 | `docs/` | `PRD.md` (the spec) and `board.md` (task board) |
 
+Each page loads `js/config.js`, then `js/common.js`, then its own file. They're ordinary scripts sharing one `Surprise` object — deliberately not ES modules, so the pages still work when opened straight from a folder.
+
 ## Run it locally
 
-Double-clicking `index.html` shows the envelope, but **the gallery stays empty**, because browsers won't let a double-clicked page read `clips.json`. Use a small local server instead.
+Double-clicking `index.html` works for the sign-up and the letter, but **the memories page stays empty**, because browsers won't let a double-clicked page read `clips.json`. Use a small local server instead — and definitely use one for the real thing.
 
 **Option A: VS Code.** Install the **Live Server** extension, open the `surprise-kit` folder, right-click `index.html`, and choose **Open with Live Server**.
 
@@ -34,11 +51,13 @@ Then open the address it prints (usually http://localhost:3000).
 
 To try the other theme, use the sun/moon button in the top right. To reset to "follow my system setting", run `localStorage.clear()` in the browser console.
 
-To replay the sign-up card while testing (instead of clearing everything), add `?reset=1` to the address, e.g. `http://localhost:3000/?reset=1`.
+To start the whole thing over while testing, add `?reset=1` to the address, e.g. `http://localhost:3000/?reset=1`. That clears her answers, her reply and which pages she's unlocked, and puts her back on a fresh sign-up — but it deliberately keeps your light/dark choice.
+
+Because the pages unlock in order, opening `letter.html` or `memories.html` directly before she's got there will just send you back to the right page. That's the guard working, not a bug.
 
 ## Edit the wording
 
-Everything she reads is in the `CONFIG` block at the top of `script.js`:
+Everything she reads is in the `CONFIG` block at the top of `js/config.js`:
 
 ```js
 const CONFIG = {
@@ -50,21 +69,25 @@ const CONFIG = {
   gallery: { title, sub, all, empty, error },     // gallery heading, subtitle, "All" tab, messages
   player:  { close, previous, next, unavailable, openOnYouTube }, // player labels and fallback text
   labels:  { theme, seal, collections, letter },                  // read aloud by screen readers only
-  signup:  { title, usernameLabel, usernamePlaceholder, moodLabel, iconLabel, musicLabel, finalQuestion, yes, no }, // sign-up card
+  signup:  { title, usernameLabel, usernamePlaceholder, moodLabel, iconLabel, musicLabel,
+             finalQuestion, yes, no, missing: { username, mood, icon, music } }, // sign-up card + its gentle prompts
   intro:   { heading },                 // "uy may love note!" — shown right after sign-up
-  reply:   { label, submit, nudge, inboxTitle }                    // the ruled-lines reply + inbox readback
+  reply:   { label, placeholder, submit, nudge, toMemories, inboxTitle, inboxEmpty }, // reply lines + inbox page
+  music:   { resume, mute, unmute },    // the header's music buttons
+  site:    { brand, footer, titles: {...}, nav: {...}, locked: {...}, labels: {...} } // header, footer, tab titles
 };
 ```
 
 - **Letter:** each string in `letter` is one paragraph. Long letters are fine, because the paper scrolls.
 - **Quotes:** keep the quotation marks and commas. A missing comma breaks the page. If something stops working, check the browser console (F12).
-- **The old "Continue" button:** the page no longer shows it — submitting the reply is what reveals the inventory now. It's still in the code (hidden) because the reveal logic reuses it internally; you don't need to touch it.
+- **Header and footer:** `site.brand` is the little title top-left, `site.footer` is the footer line, `site.nav` are the three link labels, and `site.titles` are the browser-tab titles per page. `site.locked` is the gentle note she sees if she clicks a page she hasn't reached yet.
+- **The old "Continue" button:** gone from view — submitting her reply is what opens the memories now.
 
 ## Edit the sign-up, intro and reply screens
 
 All their wording is in the same `CONFIG` block as above (`CONFIG.signup`, `CONFIG.intro`, `CONFIG.reply`) — edit it the same way.
 
-**Icons** (the "choose an icon" grid): edit the `ICONS` array near the top of `script.js`:
+**Icons** (the "choose an icon" grid): edit the `ICONS` array in `js/config.js`:
 
 ```js
 const ICONS = [
@@ -86,7 +109,13 @@ const MUSIC = [
 
 Drop real audio files into `assets/music/` (mp3, ogg or wav all work) and update `file`/`title`. The placeholders there now are silent files, just so the page never shows a broken-file error before you've added real tracks — replace them whenever you like. The chosen track loops quietly (15% volume) across every later screen; she can mute it with the button next to the theme toggle.
 
-**The "No" button:** dodges the pointer, touch and keyboard focus on purpose (it's part of the "Will you be my baby forever?" bit) — there's nothing to configure here, just know it's intentional if you see it move while testing.
+**The "No" button:** dodges the pointer, touch and keyboard focus on purpose (it's part of the "Will you be my baby forever?" bit) — there's nothing to configure here, just know it's intentional if you see it move while testing. It sits still until she actually goes near it. If you want to tune how it feels, the values are at the top of `js/config.js` (`NO_RADIUS`, `NO_FLEE_ACCEL`, `NO_CURVE`, `NO_DAMPING` and friends, each with a sensible range in a comment).
+
+### How the music behaves between pages
+
+Worth knowing, because it's a real limitation rather than a bug: moving to a new page destroys the audio element, so the track **cannot** play seamlessly across a navigation. Instead the site saves the track and position as she goes and picks it up on the next page, which means a gap of roughly half a second each time she moves.
+
+Separately, browsers decide for themselves whether a page is allowed to start audio on its own. Chrome and Edge usually allow it once she's interacted with the site; Firefox and Safari often don't. When a browser refuses, she gets a small **"tap to resume music"** button in the header instead of an error or silence she can't fix. Worth testing in the browser she actually uses.
 
 ## Add or change clips
 
@@ -94,7 +123,7 @@ There are two ways to feed the inventory. If you've set up the Google Sheet (see
 
 ### Option A: the Memories sheet (no redeploy needed)
 
-Once `backend/SETUP.md` is done and `MEMORIES_CSV_URL` is filled in in `script.js`, just add a row to the **Memories** tab: `title | note | date | youtubeId | collection` — same rules as the table below (`date` as `YYYY-MM-DD`, `youtubeId` the 11-character id, `collection` matching a collection you're already using elsewhere in the sheet). The site derives its tabs from whatever collection names appear in the sheet, so a brand-new collection name just works.
+Once `backend/SETUP.md` is done and `MEMORIES_CSV_URL` is filled in in `js/config.js`, just add a row to the **Memories** tab: `title | note | date | youtubeId | collection` — same rules as the table below (`date` as `YYYY-MM-DD`, `youtubeId` the 11-character id, `collection` matching a collection you're already using elsewhere in the sheet). The site derives its tabs from whatever collection names appear in the sheet, so a brand-new collection name just works.
 
 ### Option B: clips.json (needs a redeploy)
 
@@ -167,8 +196,8 @@ By default, her sign-up answers and letter reply only live in her own browser's 
 
 1. Create a Google Sheet with two tabs: `Responses` (the script fills this in itself) and `Memories` (you fill this in — see "Add or change clips" above).
 2. In the Sheet, **Extensions → Apps Script**, paste in `backend/Code.gs`, and deploy it as a web app (**Execute as: Me**, **Who has access: Anyone**).
-3. Copy the deployed URL into `APPS_SCRIPT_URL` near the top of `script.js`.
-4. **File → Share → Publish to web**, publish the `Memories` tab as CSV, and copy that URL into `MEMORIES_CSV_URL`, also near the top of `script.js`.
+3. Copy the deployed URL into `APPS_SCRIPT_URL` at the top of `js/config.js`.
+4. **File → Share → Publish to web**, publish the `Memories` tab as CSV, and copy that URL into `MEMORIES_CSV_URL`, just below it in `js/config.js`.
 
 A few things worth knowing:
 
@@ -176,7 +205,7 @@ A few things worth knowing:
 - **No API key in the repo.** Nothing secret is checked into the code; the deployed URL itself is the only thing you paste in, and it can only be used to submit new rows, never read them.
 - **If sending fails** (she's offline, or you haven't set this up yet), her answers stay saved in her browser and the site quietly retries later — she never sees an error either way.
 - **Leave both config values blank** if you don't want this at all; the site works exactly the same, it just doesn't send anywhere beyond her own browser, and the inventory uses `clips.json` instead of the Memories sheet.
-- **Redeploying the script later:** use "New version" under **Deploy → Manage deployments**, not "New deployment" — that keeps the same URL so you don't have to update `script.js` again. Full explanation, plus the (generous, won't-matter-for-one-person) quota limits, is in `backend/SETUP.md`.
+- **Redeploying the script later:** use "New version" under **Deploy → Manage deployments**, not "New deployment" — that keeps the same URL so you don't have to update `js/config.js` again. Full explanation, plus the (generous, won't-matter-for-one-person) quota limits, is in `backend/SETUP.md`.
 
 ## Deploy (private)
 
@@ -194,7 +223,7 @@ A few things worth knowing:
 3. **Redeploys:** every push to the connected branch redeploys automatically.
 4. **Branch previews:** these hosts also make preview links for other branches. Don't share those either.
 
-**Before you deploy, know what gets published.** The host serves *everything* in `surprise-kit`. That includes `README.md`, `docs/` and `backend/` (the Apps Script source — harmless if seen, since it has no secrets in it, but still describes the surprise), none of which she needs. Nobody can find them without the link, but she could if she typed the address. To avoid that, move the site files that actually need to be public (`index.html`, `style.css`, `script.js`, `clips.json`, `robots.txt`, `assets/`) into their own folder, and point the host at that folder instead.
+**Before you deploy, know what gets published.** The host serves *everything* in `surprise-kit`. That includes `README.md`, `docs/` and `backend/` (the Apps Script source — harmless if seen, since it has no secrets in it, but still describes the surprise), none of which she needs. Nobody can find them without the link, but she could if she typed the address. To avoid that, move the site files that actually need to be public (the four `.html` pages, `style.css`, `js/`, `clips.json`, `robots.txt`, `assets/`) into their own folder, and point the host at that folder instead.
 
 ### Privacy, honestly
 
@@ -205,7 +234,7 @@ The `noindex` tag and `robots.txt` keep search engines away, and unlisted videos
 - [ ] The real letter is in `CONFIG.letter`, and the placeholders `(your name)` and `XXXXXXXXXXX` are gone
 - [ ] Real icons are in `assets/icons/` and the `ICONS` array points at them
 - [ ] Real music is in `assets/music/` and the `MUSIC` array points at it (or you're fine with the placeholder silence)
-- [ ] If you set up the Google Sheet: `APPS_SCRIPT_URL` and `MEMORIES_CSV_URL` are filled in in `script.js`, and a test sign-up actually lands a row in the `Responses` tab
+- [ ] If you set up the Google Sheet: `APPS_SCRIPT_URL` and `MEMORIES_CSV_URL` are filled in in `js/config.js`, and a test sign-up actually lands a row in the `Responses` tab
 - [ ] Every clip plays in the deployed site, not just locally
 - [ ] Tested on her laptop's browser and wifi, in both themes
 - [ ] Opened in a private window with `?reset=1`: sign-up appears, no console errors (F12), and the full flow (sign-up → intro → letter → reply → inventory) works end to end

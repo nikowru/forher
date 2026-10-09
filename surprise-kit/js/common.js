@@ -188,7 +188,10 @@
   function save() {
     if (!trackId) return;
     lastSave = Date.now();
-    const t = audioEl && isFinite(audioEl.currentTime) ? audioEl.currentTime : 0;
+    // While autoplay is blocked the seek never lands, so currentTime sits at 0 - saving that
+    // would throw away where she actually was. pendingSeek still holds the real position.
+    const live = audioEl && isFinite(audioEl.currentTime) ? audioEl.currentTime : 0;
+    const t = pendingSeek !== null && isFinite(pendingSeek) ? pendingSeek : live;
     Store.setJSON(KEYS.music, { id: trackId, time: Math.round(t * 10) / 10, muted: mutedPref, ts: lastSave });
   }
 

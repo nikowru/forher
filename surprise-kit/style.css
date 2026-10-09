@@ -71,7 +71,7 @@ h1{margin:0;font:400 clamp(2.6rem,min(8vw,13vh),7rem)/1.05 'Pinyon Script',Georg
 /* height grows only once the letter is fully open and readable, so the seal->flap->rise
    motion above stays pixel-identical to before; the extra room is only for the reply
    section (Phase 3 P6), which sits below #text and is inert (unreachable) until this point */
-.scene.read .letter{z-index:6;height:124%;transform:translateX(-50%) translateY(-38%) scale(1.22) rotate(0)}
+.scene.read .letter{z-index:6;height:124%;transform:translateX(-50%) translateY(0) scale(1.22) rotate(0)}
 /* text area: exactly 7 ruled lines, one rule down, above Continue; long letters scroll with their own lines */
 .text{position:absolute;top:var(--lh);height:calc(var(--lh)*7);left:0;right:0;padding:0 calc(var(--w)*.07);overflow:hidden;
  background:var(--ruled),var(--paper);background-attachment:local;scrollbar-width:thin;scrollbar-color:var(--rule) transparent}
@@ -207,7 +207,7 @@ html:has(.player[open]){overflow:hidden}
 /* floating round buttons sit on mixed or darker backgrounds, so their ring is a self-contained light/dark/light band */
 .p-close:focus-visible,.theme:focus-visible,.mute:focus-visible{--ring:var(--ring-out);outline-offset:2px;box-shadow:0 0 0 7px var(--ring-in)}
 .p-close:focus-visible{box-shadow:0 0 0 7px var(--ring-in),0 4px 12px rgba(var(--sh),.5)}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01ms!important}#air{display:none}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition-duration:.01ms!important}#air{display:none}
  .gallery{clip-path:none!important;transition:opacity .6s!important}.gallery.show{opacity:1}}
 
 /* envelope front pieces + theme toggle */
@@ -391,10 +391,14 @@ html:has(.player[open]){overflow:hidden}
    dx = 50vw - (header side padding + theme btn + mute btn + gaps + half the icon ~ 120px)
    dy = header icon centre (~30px) - that start height. --w is inherited from .scene, so this tracks its size.
    Below 900px the header stacks and its action row is centred: the icon is ~50px left of centre, ~120px down. */
-#letter.folding{transition:transform .65s cubic-bezier(.3,.7,.2,1),opacity .55s ease;
- transform:translateX(-50%) translate(calc(50vw - clamp(1rem,3vw,2rem) - 120px),calc(var(--w)*.096 + 30px - 50vh)) scale(.05) rotate(8deg);opacity:0;pointer-events:none}
+/* L1 fix: the read letter is no longer lifted (translateY(0)), so its centre sits .224 * --w below the scene top, and the
+   scene top is 50vh - .32w + E, where E = half the h1 block (font + 3vh gap) minus ~28px of header/footer asymmetry (fitted, measured).
+   dy = 30 - 50vh + .096w - E. --fold-dy is the desktop value; the narrow one is the old stacked-header estimate. */
+#letter.folding{--fold-dy:calc(var(--w)*.096 + 58px - 51.5vh - .525*clamp(2.6rem,min(8vw,13vh),7rem));--fold-dy-narrow:calc(var(--w)*.096 + 96px - 51.5vh - .525*clamp(2.6rem,min(8vw,13vh),7rem));
+ transition:transform .65s cubic-bezier(.3,.7,.2,1),opacity .55s ease;
+ transform:translateX(-50%) translate(calc(50vw - clamp(1rem,3vw,2rem) - 120px),var(--fold-dy)) scale(.05) rotate(8deg);opacity:0;pointer-events:none}
 @media (max-width:900px){
- #letter.folding{transform:translateX(-50%) translate(-50px,calc(var(--w)*.096 + 120px - 50vh)) scale(.05) rotate(8deg)}
+ #letter.folding{transform:translateX(-50%) translate(-50px,var(--fold-dy-narrow)) scale(.05) rotate(8deg)}
 }
 
 /* Phase 4 L3: "open our memories" - revealed (hidden attribute removed) by letter.js after the light-up.
