@@ -87,7 +87,14 @@ const CONFIG = {
     musicLabel: "Choose your music",
     finalQuestion: "Will you be my baby forever?",
     yes: "Yes",
-    no: "No"
+    no: "No",
+    // gentle prompts shown in #su-msg when Yes is pressed with something still missing (first missing one wins)
+    missing: {
+      username: "Tell me what to call you first, please?",
+      mood: "Pick how you're feeling first, please?",
+      icon: "Choose an icon you like first, please?",
+      music: "Pick a song for us first, please?"
+    }
   },
   // intro / dim-and-unfold beat (Phase 3 P5), shown once right after a first-time sign-up
   intro: {
@@ -174,7 +181,7 @@ function renderMoods() {
   box.addEventListener("click", e => {
     const b = e.target.closest(".su-mood"); if (!b) return;
     for (const o of box.children) o.setAttribute("aria-pressed", "false");
-    b.setAttribute("aria-pressed", "true"); selectedMood = b.dataset.id;
+    b.setAttribute("aria-pressed", "true"); selectedMood = b.dataset.id; signupFixed("mood");
   });
 }
 
@@ -191,7 +198,7 @@ function renderIcons() {
   box.addEventListener("click", e => {
     const b = e.target.closest(".su-icon"); if (!b) return;
     for (const o of box.children) o.setAttribute("aria-pressed", "false");
-    b.setAttribute("aria-pressed", "true"); selectedIconId = b.dataset.id;
+    b.setAttribute("aria-pressed", "true"); selectedIconId = b.dataset.id; signupFixed("icon");
   });
 }
 
@@ -207,11 +214,26 @@ function renderTracks() {
   list.addEventListener("click", e => {
     const b = e.target.closest(".su-track"); if (!b) return;
     for (const o of list.querySelectorAll(".su-track")) o.setAttribute("aria-selected", "false");
-    b.setAttribute("aria-selected", "true"); selectedTrackId = b.dataset.id;
+    b.setAttribute("aria-selected", "true"); selectedTrackId = b.dataset.id; signupFixed("music");
   });
 }
 
 renderMoods(); renderIcons(); renderTracks();
+
+// gentle validation (Yes with something missing): a sweet message in #su-msg + a highlight on the step, never an alert
+const stepEl = key => document.querySelector('.su-step[data-step="' + key + '"]');
+function signupFixed(key) { // she filled it in: drop that highlight, and the message once nothing is left to fix
+  const st = stepEl(key); if (st) st.classList.remove("su-missing");
+  if (!document.querySelector(".su-step.su-missing") && !$("su-msg").hidden) { $("su-msg").hidden = true; $("su-msg").textContent = ""; noRehome(); }
+}
+$("su-username").addEventListener("input", () => { if ($("su-username").value.trim()) signupFixed("username"); });
+function firstMissing() {
+  if (!$("su-username").value.trim()) return { key: "username", focus: $("su-username") };
+  if (!selectedMood) return { key: "mood", focus: document.querySelector("#su-moods .su-mood") };
+  if (!selectedIconId) return { key: "icon", focus: document.querySelector("#su-icons .su-icon") };
+  if (!selectedTrackId) return { key: "music", focus: document.querySelector("#su-tracks .su-track") };
+  return null;
+}
 
 // ---- final step: "Will you be my baby forever?" - #su-no dodges, #su-yes always works ----
 const noBtn = $("su-no"), yesBtn = $("su-yes"), signupSection = $("signup");
@@ -231,6 +253,8 @@ const noS = {
   g: null, f: null,        // active glide / fade descriptors
   tx: 0, ty: 0,            // translate currently applied (includes idle sway)
   env: 0,                  // idle-sway envelope 0..1
+  live: false,             // false until her first real dodge trigger: until then No has NO inline style, NO transform, NO loop
+  hl: 0, ht: 0,            // last known natural (home) spot, so a late layout shift can be absorbed
   raf: 0, last: 0, lastActive: 0, lastMoveStart: -1e9, cooldownUntil: 0, pinnedMs: 0, armed: true
 };
 const ptr = { active: false, x: 0, y: 0, t: 0, speed: 0, vx: 0, vy: 0 };
@@ -302,10 +326,32 @@ function noFarCandidates(m) {
   return out.length ? out : [pickFar(m, ptr.x, ptr.y)];
 }
 
+// First real trigger: only now does No get any inline positioning (until then CSS alone places it, next to Yes).
+function noArm() {
+  if (noS.live) return;
+  noS.live = true;
+  noBtn.style.position = "relative"; noBtn.style.zIndex = "2"; noBtn.style.willChange = "transform";
+}
+// Re-measure home after anything that can shift layout (fonts, resize, message shown). If No has already
+// moved, its viewport position is shifted by the same amount so it never ends up stale.
+function noRehome() {
+  const m = noMeasure(), s = noS;
+  if (s.live && s.engaged) { s.x += m.homeL - s.hl; s.y += m.homeT - s.ht; noWake(); }
+  s.hl = m.homeL; s.ht = m.homeT;
+}
+// pointer / touch moved: wake the dodge only once she is actually within range of No
+function noProximity(x, y) {
+  if (noS.live) { noWake(); return; }
+  if (signupSection.hidden) return;
+  const r = noBtn.getBoundingClientRect(), R = NO_RADIUS + Math.min(NO_RADIUS_BONUS_MAX, ptr.speed * NO_RADIUS_SPEED);
+  if (rectDist(x, y, r.left, r.top, r.width, r.height) < R) { noArm(); noWake(); }
+}
+
 function noStartMove(kind, px, py) {
   if (signupSection.hidden) return;
+  noArm();
   const m = noMeasure(), s = noS, now = performance.now();
-  if (!s.engaged) { s.x = m.homeL; s.y = m.homeT; s.relaxCheck = true; }
+  if (!s.engaged) { s.x = m.homeL; s.y = m.homeT; s.hl = m.homeL; s.ht = m.homeT; s.relaxCheck = true; }
   s.engaged = true; s.lastMoveStart = now; s.vx = s.vy = 0;
   if (reduceMotion.matches) {
     const t = pickNear(m, px, py);
@@ -343,7 +389,7 @@ function noStartMove(kind, px, py) {
 function noWake() {
   const now = performance.now();
   noS.lastActive = now;
-  if (!noS.raf && !signupSection.hidden) { noS.last = now; noS.raf = requestAnimationFrame(noFrame); }
+  if (noS.live && !noS.raf && !signupSection.hidden) { noS.last = now; noS.raf = requestAnimationFrame(noFrame); }
 }
 function noStop() {
   if (noS.raf) cancelAnimationFrame(noS.raf);
@@ -478,7 +524,7 @@ function noFrame(now) {
   if (!isFinite(s.x + s.y + s.vx + s.vy)) { s.x = m.homeL; s.y = m.homeT; s.vx = s.vy = 0; s.engaged = false; s.mode = "free"; }
 
   // idle sway: a small drifting offset (visual only), eased in while there has been recent activity, out afterwards
-  const swayOn = !reduced && NO_SWAY_AMP > 0 && now - s.lastActive < NO_IDLE_PAUSE_MS;
+  const swayOn = s.engaged && !reduced && NO_SWAY_AMP > 0 && now - s.lastActive < NO_IDLE_PAUSE_MS;
   s.env += ((swayOn ? 1 : 0) - s.env) * Math.min(1, dt * 3);
   if (!swayOn && s.env < 0.02) s.env = 0;
   const ph = now / NO_SWAY_PERIOD_MS * Math.PI * 2;
@@ -528,7 +574,7 @@ function noReducedCheck(x, y) {
 
 document.addEventListener("pointermove", e => {
   if (!noPointerSeen(e, false)) return;
-  if (reduceMotion.matches) noReducedCheck(e.clientX, e.clientY); else noWake();
+  if (reduceMotion.matches) noReducedCheck(e.clientX, e.clientY); else noProximity(e.clientX, e.clientY);
 }, { passive: true });
 // Touch / click pre-emption: the button leaves on pointerdown (and touchstart as a fallback), i.e. before
 // pointerup/click can land on it. Nothing is preventDefault-ed here, and #su-yes is never touched.
@@ -537,7 +583,7 @@ function noPress(x, y, e, isPointer) {
   if (noOnButton(x, y)) {
     const recent = noS.mode === "glide" && noS.g && noS.g.ms === NO_DASH_MS && performance.now() - noS.g.t0 < 300;
     if (!recent) noStartMove("dash", x, y);
-  } else if (reduceMotion.matches) noReducedCheck(x, y); else noWake();
+  } else if (reduceMotion.matches) noReducedCheck(x, y); else noProximity(x, y);
 }
 document.addEventListener("pointerdown", e => noPress(e.clientX, e.clientY, e, true), { passive: true });
 document.addEventListener("touchstart", e => { const t = e.touches[0]; if (t) noPress(t.clientX, t.clientY, e, false); }, { passive: true });
@@ -549,7 +595,12 @@ document.addEventListener("touchend", () => { ptr.active = false; }, { passive: 
 document.addEventListener("touchcancel", () => { ptr.active = false; }, { passive: true });
 document.documentElement.addEventListener("pointerleave", () => { ptr.active = false; }, { passive: true });
 window.addEventListener("blur", () => { ptr.active = false; });
-window.addEventListener("resize", () => { noS.relaxCheck = true; noWake(); }, { passive: true });
+window.addEventListener("resize", () => { noRehome(); noS.relaxCheck = true; noWake(); }, { passive: true });
+// late-loading web fonts reflow the card: re-measure No's home so a stale measurement can never linger
+if (document.fonts) {
+  if (document.fonts.ready) document.fonts.ready.then(noRehome);
+  if (document.fonts.addEventListener) document.fonts.addEventListener("loadingdone", noRehome);
+}
 signupSection.addEventListener("scroll", noWake, { passive: true });
 // keyboard: focus makes No glide smoothly to a nearby free spot. Focus itself never moves, it stays
 // tabbable, and Enter/Space still fire its click - Tab / Shift+Tab leave it as with any button.
@@ -559,8 +610,10 @@ noBtn.addEventListener("focus", () => {
   noStartMove("near", r.left + r.width / 2, r.top + r.height / 2);
 });
 // a pointer "click" on No (detail > 0) is swallowed, since it's only reachable if the dodge failed;
-// a keyboard activation (detail 0) just makes it step away again, as before.
+// a keyboard activation (detail 0) just makes it step away again, as before. Only once No is actually in
+// roaming mode (noS.engaged); at rest it is a plain button and this listener never interferes.
 noBtn.addEventListener("click", e => {
+  if (!noS.engaged) return;
   if (e.detail > 0) { e.preventDefault(); e.stopImmediatePropagation(); noStartMove("dash", e.clientX, e.clientY); }
   else noStartMove("near", ptr.x, ptr.y);
 }, true);
@@ -569,9 +622,9 @@ reduceMotion.addEventListener("change", () => {
   noBtn.style.opacity = ""; noBtn.style.pointerEvents = "";
   noWake();
 });
-// No sits above everything on the card while it roams, and is promoted to its own layer. Neither changes layout.
-noBtn.style.position = "relative"; noBtn.style.zIndex = "2"; noBtn.style.willChange = "transform";
-noWake(); // a few seconds of idle sway on load, then the loop pauses by itself
+// No starts completely still: no inline style, no transform, no sway and no animation loop until a real
+// trigger (pointer in range, touch, keyboard focus) calls noArm() - which is where it gets position:relative,
+// z-index and will-change (above everything while it roams; none of it changes layout).
 
 // ---- persistence + backend send (P4) ----
 const PENDING_KEY = "surprise-pending-sends";
@@ -654,6 +707,16 @@ ensureMuteButton();
 // envelope scene) via the intro dim-and-unfold beat below (Phase 3 P5).
 $("su-form").addEventListener("submit", e => {
   e.preventDefault();
+  const missing = firstMissing();
+  if (missing) {
+    for (const st of document.querySelectorAll(".su-step.su-missing")) st.classList.remove("su-missing");
+    stepEl(missing.key).classList.add("su-missing");
+    const msgEl = $("su-msg"), wasHidden = msgEl.hidden;
+    msgEl.textContent = CONFIG.signup.missing[missing.key]; msgEl.hidden = false;
+    if (wasHidden) noRehome(); // the message nudges the Yes/No row down; keep No's home measurement honest
+    if (missing.focus) missing.focus.focus();
+    return; // nothing saved, no music, #signup stays
+  }
   const username = $("su-username").value.trim();
   const website = $("su-website").value; // honeypot: read as-is, only a bot would have filled it
   const answers = { username, mood: selectedMood, iconId: selectedIconId, musicId: selectedTrackId, yes: true };

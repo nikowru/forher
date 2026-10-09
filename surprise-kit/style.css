@@ -211,7 +211,7 @@ html:has(.player[open]) .gallery{overflow:hidden}
 .theme{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:16px;z-index:55;width:42px;height:42px;border-radius:50%;border:1.5px solid var(--head);background:var(--theme-bg);color:var(--head);font-size:1.25rem;line-height:1;cursor:pointer}
 .theme:hover{background:rgba(var(--sh),.15)}
 /* mute control (Phase 3 P4): same fixed-toolbar treatment as .theme, reusing its vars - no new colors */
-.mute{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:66px;z-index:40;width:42px;height:42px;border-radius:50%;border:1.5px solid var(--head);background:var(--theme-bg);color:var(--head);font-size:1.1rem;line-height:1;cursor:pointer}
+.mute{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:66px;z-index:55;width:42px;height:42px;border-radius:50%;border:1.5px solid var(--head);background:var(--theme-bg);color:var(--head);font-size:1.1rem;line-height:1;cursor:pointer}
 .mute:hover{background:rgba(var(--sh),.15)}
 
 /* sign-up gate (Phase 3 P1, reworked Phase 3.1 S1/S2): a wide, centered card with a
@@ -307,6 +307,17 @@ html:has(.player[open]) .gallery{overflow:hidden}
    turned the card's own white (QA S5 follow-up). */
 .su-track[aria-selected="true"],.su-track.selected{color:var(--tab-on-ink);background:var(--tab-on);border-color:var(--btn);
  box-shadow:0 0 0 3px color-mix(in srgb,var(--btn) 45%,transparent)}
+/* gentle validation message (filled by script.js). NO display rule on purpose, so the hidden
+   attribute keeps working - same caution as .reply-nudge. */
+.su-msg{margin:0;max-width:34ch;text-align:center;text-wrap:balance;font:600 1rem/1.4 'Quicksand',sans-serif;color:var(--ink)}
+/* "missing field" highlight, toggled by script.js on a .su-step. Soft --btn tint + ring (the same
+   --btn ring as the selected moods/icons/tracks): --btn differs from --paper in both themes
+   (#22575e vs #f0edda light, #374151 vs #f3f4f6 dark), unlike --tab-on which equals --paper in dark.
+   Box-shadow/background only - no padding or border change, so no layout shift. */
+.su-missing{border-radius:8px;background:color-mix(in srgb,var(--btn) 10%,transparent);
+ box-shadow:0 0 0 3px color-mix(in srgb,var(--btn) 45%,transparent);animation:su-missing-glow 1.6s ease-in-out 2}
+@keyframes su-missing-glow{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--btn) 25%,transparent)}}
+@media (prefers-reduced-motion:reduce){.su-missing{animation:none}}
 /* final yes/no step: .su-yesno stays the positioned ancestor (position:relative) that
    gallery-dev's upcoming physics rewrite (S3/S4) anchors #su-no's eventual position:absolute
    to - that contract is unchanged here, su-no is still plain layout, no motion added. */
