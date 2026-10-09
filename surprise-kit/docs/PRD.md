@@ -6,6 +6,7 @@ A private, one-page website for one viewer (my girlfriend) on her laptop. She cl
 ## 2. Goals and non-goals
 Goals: feel warm, handmade and vintage; work first time on reveal day; easy for me to add or edit clips and wording without touching the design.
 Non-goals: accounts or logins, comments, public sharing, phone layout, analytics, monetization.
+**Phase 3 exception (approved 2026-10-09):** "accounts or logins" and "comments" are no longer non-goals for the one-time sign-up card and the letter-reply flow in section 4.2. These stay small on purpose: the sign-up is a local, single-viewer profile saved to her browser's localStorage (no server auth, no multi-user accounts, no password), and the letter reply is one private message back to me (not a public comment thread). Public sharing, analytics and monetization are still non-goals and nothing here changes that. "Phone layout" also remains a non-goal per Decision D below, except the sign-up card itself (4.2), which is explicitly mobile-friendly at my request; every other screen stays desktop-first.
 
 ## 3. Audience and context
 One viewer, a laptop (16:9), latest Chrome or Edge, opened once as a surprise and maybe revisited. Needs internet.
@@ -49,6 +50,55 @@ Rules:
 - Contrast: cream on mid-teal is only about 1.8:1, so headings use --deep-teal (about 6:1 on --mist) or sit on a deep background; body text uses --ink. Check every text/background pair for 4.5:1 (3:1 for large headings).
 - The red wax seal stays red in both themes unless I decide otherwise (open question).
 
+### 4.2 Phase 3: sign-up, intro, letter reply (new, approved 2026-10-09)
+Adds a one-time sign-up step before Scene 1, and replaces the old "Continue" click with a letter-reply step that lights the page back up into the inventory. Scene 1's seal/flap/letter interaction and Scene 2/3 (inventory + player) are not redesigned, only retimed/re-triggered as noted below.
+
+**Flow:** 0. Sign-up (first visit only) -> 1. Intro / dim-and-unfold -> 2. Scene 1 letter (unchanged) -> 3. Letter reply + inbox -> 4. Light-up + inventory reveal (existing Scene 2/3, unchanged content).
+
+**0. Sign-up card** (the one screen that is mobile-friendly by request; every other screen stays desktop-first per Decision D)
+- One centered card, same fonts and the same two palettes as the rest of the site (no new colors; see the constraints below).
+- Steps, in order: username (text input, placeholder "baby ko"); "Are you happy?" (5 emoji buttons sad to very happy, single-select, a clear selected state); "Choose an icon" (a grid driven by one `ICONS` array in script.js: `{id, label, file}`, files under `/assets/icons/`, placeholders for now with a code comment marking exactly where real files go); "Choose your music" (a list driven by one `MUSIC` array in script.js: `{id, title, file}`, files under `/assets/music/`, same placeholder-comment convention); final question "Will you be my baby forever?" with Yes/No, where No evades pointer proximity, touch-near and keyboard focus (a simpler move under `prefers-reduced-motion`), and Yes is always easy to reach and is the only way to finish.
+- On finishing: the chosen track starts as background audio at about 15% volume, loops, and keeps playing across every later screen, with a mute/unmute control. Browsers that block autoplay must fail silently (wrapped so nothing throws); the mute control still works once she interacts with the page.
+- All answers (username, mood, icon id, music id, "yes") save to `localStorage` wrapped in try/catch. A later visit with saved answers skips sign-up. `?reset=1` in the URL clears the saved answers, for testing.
+
+**1. Intro / dim-and-unfold** (after sign-up, before the seal is clickable)
+- Heading "uy may love note!" at the top.
+- The background dims to a darker shade of the active theme's own palette (derived from the existing tokens via opacity, `color-mix()` or an overlay, defined for both themes - no new hex colors).
+- The envelope/letter animates down from the top, then flowers/notes/decorations unfold with a staggered animation.
+- The existing red wax seal then opens the letter exactly as Scene 1 already works today (seal -> flap -> letter rise). That interaction is not redesigned.
+
+**2. Letter reply + inbox** (replaces the old "Continue" button)
+- Below the existing letter text: ruled blank lines (a textarea styled like the ruled paper) and a "submit sa baby ko" button.
+- Settled (2026-10-09): submit is always enabled; when the reply is empty, a gentle inline nudge (e.g. "say anything, or leave it blank") shows instead of blocking submission. See Decisions in docs/board.md.
+- On submit: the letter folds/animates up into a small inbox icon fixed top-right with an unread badge; the dimmed background then lights up smoothly to the normal theme colors; the inventory pops in with a staggered animation (replacing the old Continue-triggered unveil).
+- Clicking the inbox later re-opens a small view of her saved reply, read back from her own browser's localStorage - this is independent of where the reply is also sent (below), and is never a read of anything stored server-side.
+- Settled (2026-10-09): where the reply (and the sign-up answers) go beyond localStorage is a Google Apps Script web app backed by a private Google Sheet in my Drive - see section 4.3. It only accepts new rows; it can never serve a stored reply back to the site, so her letters can't be read through the public URL - only by me, opening the Sheet directly.
+
+**3. Inventory reveal**
+- The same inventory behavior (tabs, thumbnails, dates, modal player - FR-4 to FR-10, Scene 2/3) stays as built; only two things change: the trigger (a light-up transition at the end of the letter-reply step, instead of a "Continue" click) and, settled 2026-10-09, the data source - see section 4.3 and section 6. Videos themselves stay on YouTube, played exactly as today.
+
+**Constraints on all of the above (extends section 4.1's rules):**
+- Only the existing CSS custom properties / two palettes may be used for any new UI (light: #5BC2C3, #22575E, #F0EDDA, #5C4130; dark: #374151, #6B7280, #D1D5DB, #F3F4F6), switched by `data-theme`, exactly as today. The red wax seal is the only exception and stays as-is. Any hover/selected/shadow/dimmed shade is derived from these tokens via opacity, `color-mix()`, or an overlay - never a new hex value.
+- File structure stays index.html (structure only) / style.css (all styling) / script.js (all logic, including the `CONFIG` wording block and the new `ICONS` and `MUSIC` arrays) - no inline CSS or JS in HTML, no new JS/CSS files. New binary assets live under `/assets/icons/` and `/assets/music/` (placeholders until I supply real files).
+- Accessibility: every new control keeps a visible focus state and is keyboard-operable (choosing a mood, an icon, a track, and the Yes/No step included - "No" evading focus must still land somewhere reachable, never trap keyboard users); contrast holds in both themes; every new animation (unfold, dim/light-up, fold-to-inbox, the No dodge) has a non-motion or simpler-motion alternative under `prefers-reduced-motion`.
+- Process: Decision E already lets me pre-approve a batch of tasks instead of one-at-a-time review; Phase 3 is planned as one such batch, but tasks stay small (45 minutes or less) so I can still review individually if I choose to.
+
+### 4.3 Data backend: Google Sheets + Apps Script (settled 2026-10-09)
+Settles what was open in section 12 about where the letter reply goes, and becomes the phase-2 data store for both the sign-up/reply answers and the memories inventory (replacing the Supabase idea in section 7). One Apps Script web app, backed by one private Google Sheet in my own Drive, handles both directions; the Apps Script source lives in the repo under /backend (or /docs) - not in script.js, since it runs on Google's servers, not in her browser.
+
+**Writing: sign-up + letter reply -> Sheet, "Responses" tab**
+- The site POSTs to the Apps Script web app URL when sign-up finishes and again when the letter reply is submitted; each write appends one row with a timestamp (schema in section 6.2).
+- The script implements only `doPost`. It never returns stored rows, so a reply can never be read back through the public URL - I read replies by opening the Sheet myself, not through the site.
+- No API key or secret lives in the repo; the web app URL is the only config value, pasted into script.js, and it only accepts writes.
+- Apps Script web apps don't handle CORS preflight well, so the site sends a plain POST (`text/plain` body, or `fetch` with `mode: 'no-cors'`), accepting that the response can't be read back by the browser. If a send fails (offline, blocked, quota), the data stays queued in localStorage and the site retries later automatically; she is never shown an error.
+- Basic spam guard: a hidden honeypot field (a real submission never fills it) and a length cap on the reply text; the script drops anything that fails either check.
+
+**Reading: memories inventory <- Sheet, "Memories" tab**
+- A second tab (title, note, date, YouTube id, collection - same meaning as clips.json's fields in section 6.1) is published as a CSV and fetched by the site on load, so I can add or edit clips from my phone or from Sheets directly, with no code change and no redeploy.
+- If the CSV fetch fails for any reason, the site falls back to the clips.json placeholders already in script.js; FR-3/FR-9 behavior is unchanged either way.
+
+**Setup** (documented step by step in README, per the release task in docs/board.md): create the Sheet with its two tabs; paste in the Apps Script source; deploy it as a web app; copy the resulting URL into one config value in script.js; publish the Memories tab as CSV and copy that URL too. The README also explains, in plain language: Apps Script's quotas/limits, that the first response after the script has sat idle can be slow, and that redeploying as a "new version" keeps the same web app URL while a "new deployment" issues a new one (which would mean updating script.js's config value).
+
 ## 5. Functional requirements
 | ID | Requirement |
 |---|---|
@@ -64,7 +114,9 @@ Rules:
 | FR-10 | Letter text, heading and collection names editable in one place |
 | FR-11 | Two themes (colorful and minimal neutral) via CSS variables; toggle button; follows system setting on first load; choice remembered (wrap storage access in try/catch) |
 
-## 6. Data model (phase 1: clips.json)
+## 6. Data model
+
+### 6.1 Memories: clips.json (fallback) and the "Memories" CSV tab (primary, phase 2, section 4.3)
 ```json
 {
   "collections": [{ "id": "2023", "title": "2023", "icon": "🌸" }],
@@ -81,19 +133,27 @@ Rules:
 ```
 Rules: id unique; youtubeId is 11 characters; date is ISO; every clip has a collection that exists.
 
+The "Memories" Sheet tab (published as CSV, fetched by the site per 4.3) carries the same fields under one header row: `title, note, date, youtubeId, collection` (`note` = clips.json's `caption`; the row's position stands in for `id`; collections are implied by the `collection` column, not a separate list). If the CSV can't be fetched, the site uses the clips.json placeholders instead - same rules apply to both.
+
+### 6.2 Responses: sign-up + letter reply (Sheet tab "Responses", section 4.3)
+One row per write, appended by the Apps Script `doPost`, each with a server-side timestamp:
+- Sign-up row: `timestamp, type="signup", username, mood, iconId, musicId, yes=true`.
+- Reply row: `timestamp, type="reply", username, reply` (reply text, after the honeypot and length-cap checks).
+The sheet never exposes these rows back to the site - they are read only by me, by opening the Sheet.
+
 ## 7. Tech stack
 | Layer | Choice | Why |
 |---|---|---|
 | Frontend | Plain HTML, CSS, ES-module JavaScript, no build step | Nothing to break on reveal day; easy to edit |
-| Data (phase 1) | clips.json in the repo | 100 to 500 clips is tiny; loads instantly; no server |
-| Data (phase 2, optional) | Supabase (Postgres) `clips` table + a private admin page | Only if I want to add clips from a phone or without redeploying |
+| Data (phase 1, fallback) | clips.json in the repo | 100 to 500 clips is tiny; loads instantly; no server; used if the CSV fetch below fails |
+| Data (phase 2, settled 2026-10-09) | Google Sheets (private, in my own Drive) + one Google Apps Script web app: `doPost` appends sign-up/reply rows to a "Responses" tab (write-only, never serves them back); a "Memories" tab is published as CSV and fetched by the site for clips (section 4.3, section 6) | Free, no server to host; I can add clips from my phone without redeploying; replies stay private since the script can't be asked to return them; replaces the earlier Supabase idea and the three delivery options once listed in section 12 |
 | Video | Unlisted YouTube, embedded with the IFrame Player API on youtube-nocookie.com | Free, handles large or long clips |
 | Thumbnails | img.youtube.com/vi/{id}/hqdefault.jpg | No images to make by hand |
-| Repo | GitHub, private | Nobody sees clips.json early |
+| Repo | GitHub, private | Nobody sees clips.json or the Apps Script URL early |
 | Hosting | Cloudflare Pages, Netlify or Vercel, auto-deploy from GitHub | Free and works with private repos. GitHub Pages needs a public repo on free accounts, so avoid it |
 | Tooling | VS Code | Repeatable workflow |
 
-Why no database first: a JSON file is faster, free and cannot go down. Add Supabase only when editing JSON becomes a pain.
+Why no database first (phase 1): a JSON file is faster, free and cannot go down. Phase 2 (Google Sheets + Apps Script, section 4.3) is now the settled choice for both the Memories data and the sign-up/reply data - clips.json stays only as the fallback if the published CSV can't be fetched.
 
 ## 8. Non-functional requirements
 - Performance: lazy thumbnails, player loads on click, first paint under 2 seconds on wifi.
@@ -124,6 +184,7 @@ Why no database first: a JSON file is faster, free and cannot go down. Add Supab
 - Link leaks or is opened early: keep repo and link private.
 - Autoplay with sound is blocked by browsers: she clicks play.
 - Bad wifi on reveal day: test beforehand, keep a backup on a phone hotspot.
+- Apps Script web app (section 4.3) can respond slowly on its first request after sitting idle, and has daily quotas: test beforehand; redeploy as a "new version" (not a "new deployment") so script.js's config URL doesn't need updating, and nothing she does ever shows an error either way (failed sends just retry later from localStorage).
 
 ## 12. Open questions
 - Exact Canva heading font name.
@@ -133,3 +194,6 @@ Why no database first: a JSON file is faster, free and cannot go down. Add Supab
 - Gallery style: game-inventory slots or pinned polaroids.
 - Number of clips and how to group them.
 - Deployment target: Cloudflare Pages, Netlify or Vercel.
+- Phase 3 - real files for /assets/icons/ and /assets/music/ are placeholders until I supply them.
+
+Settled, no longer open (2026-10-09, see section 4.2, 4.3 and docs/board.md Decisions): the letter-reply submit button (always enabled, gentle nudge when empty) and where the letter reply and sign-up answers are delivered (Google Apps Script web app + private Google Sheet, write-only).
