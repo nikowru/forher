@@ -39,7 +39,14 @@ body::after{content:"";position:fixed;inset:0;z-index:29;pointer-events:none;bac
 #air span{position:absolute;bottom:0;background:var(--speck);border-radius:50%;opacity:0;animation:float linear infinite}
 #air span.pt{background:var(--petal);border-radius:70% 0 70% 0}
 @keyframes float{0%{transform:translate3d(0,10vh,0) rotate(0);opacity:0}10%{opacity:.55}90%{opacity:.4}100%{transform:translate3d(var(--dx),-115vh,0) rotate(360deg);opacity:0}}
-.stage{position:relative;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3vh;padding:0 4vw}
+/* Phase 4 L1: .stage is now a normal in-page section inside <main class="site-main letter-main">, between the
+   sticky header and the footer (no longer a full-viewport box). letter-main is a flex column and the stage
+   grows to fill it, so the scene stays centred in the space between the chrome at any window size; if the
+   window is genuinely too short the page simply scrolls instead of cutting anything off. */
+.letter-main{display:flex;flex-direction:column;overflow-x:clip}
+.stage{position:relative;flex:1 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3vh;padding:2vh 4vw}
+/* the soft glow reaches 30% past the scene (was 45%) so it never adds scroll height above the footer */
+.letter-main .scene::before{inset:-30%}
 h1{margin:0;font:400 clamp(2.6rem,min(8vw,13vh),7rem)/1.05 'Pinyon Script',Georgia,serif;color:var(--head);text-align:center;
  text-shadow:0 2px 16px rgba(var(--sh),.28);transition:opacity .9s,transform .9s}
 .hint{margin:0;font-style:italic;font-weight:500;font-size:1.15rem;color:var(--hint);transition:opacity .6s}
@@ -347,6 +354,12 @@ html:has(.player[open]) .gallery{overflow:hidden}
    separate rule needed; prefers-reduced-motion above already collapses it to .01ms either way. */
 #stage::after{content:"";position:fixed;inset:0;z-index:31;pointer-events:none;background:rgba(var(--sh),.5);opacity:0;transition:opacity 1.1s ease}
 #stage.intro-dim::after{opacity:1}
+/* L1 dim decision: the overlay is position:fixed over the WHOLE viewport, so the header, footer, atmosphere
+   and page background all dim together ("dimmed background"), and removing .intro-dim lights the whole page
+   back up. The foreground (heading, envelope scene, hint, memories button) is lifted above the overlay
+   (z-index 32; .intro-msg is 33) so the envelope stays lit like a spotlight and text keeps its normal
+   contrast. Dimmed chrome stays clickable: the overlay has pointer-events:none. */
+#stage>h1,#stage>.hint,#stage>.scene{position:relative;z-index:32}
 #stage.intro-pre .scene{opacity:0;transform:translateY(-70vh)}
 #stage.intro-pre .flowers{opacity:0;transform:translateY(26px) scale(.8)}
 #stage.intro-pre .book{opacity:0;transform:translateY(26px) scale(.8)}
@@ -392,5 +405,81 @@ html:has(.player[open]) .gallery{overflow:hidden}
    prefers-reduced-motion rule above forces every transition here to .01ms; there's no
    mid-fold visual this depends on. script.js hides #letter's content behind #stage afterwards
    the same way .scene.gone already does (triggered via the existing #go click, not duplicated). */
+/* Phase 4 L1: the target is now #hdr-inbox in the sticky header (not the old floating #inbox). The letter's
+   centre sits at ~50vw and ~(50vh - .15 * scene height) (the .read state lifts it), so:
+   dx = 50vw - (header side padding + theme btn + mute btn + gaps + half the icon ~ 120px)
+   dy = header icon centre (~30px) - that start height. --w is inherited from .scene, so this tracks its size.
+   Below 900px the header stacks and its action row is centred: the icon is ~50px left of centre, ~120px down. */
 #letter.folding{transition:transform .65s cubic-bezier(.3,.7,.2,1),opacity .55s ease;
- transform:translateX(-50%) translate(42vw,-46vh) scale(.05) rotate(8deg);opacity:0;pointer-events:none}
+ transform:translateX(-50%) translate(calc(50vw - clamp(1rem,3vw,2rem) - 120px),calc(var(--w)*.096 + 30px - 50vh)) scale(.05) rotate(8deg);opacity:0;pointer-events:none}
+@media (max-width:900px){
+ #letter.folding{transform:translateX(-50%) translate(-50px,calc(var(--w)*.096 + 120px - 50vh)) scale(.05) rotate(8deg)}
+}
+
+/* Phase 4 L3: "open our memories" - revealed (hidden attribute removed) by letter.js after the light-up.
+   NO display rule on purpose, so [hidden] keeps working; as a flex item of .stage it is blockified anyway.
+   Centred over the (now gone) scene. Entrance is a keyframe animation with fill "both": with
+   prefers-reduced-motion the global rule sets animation:none, and the plain styles here ARE the end state. */
+.to-memories{position:absolute;left:50%;top:50%;z-index:32;transform:translate(-50%,-50%);box-sizing:border-box;
+ padding:.45em 1.6em;font:italic 600 clamp(1.4rem,2.4vw,2rem)/1.3 'Cormorant Garamond',Georgia,serif;text-decoration:none;white-space:nowrap;
+ color:var(--btn-text);background:var(--btn);border:0;border-radius:3px;cursor:pointer;box-shadow:0 3px 8px rgba(var(--sh),.35);
+ animation:memories-in .8s cubic-bezier(.2,.8,.3,1) .35s both}
+.to-memories:hover{filter:brightness(1.25)}
+@keyframes memories-in{from{opacity:0;transform:translate(-50%,calc(-50% + 14px))}}
+
+/* ===== Phase 4 A3: shared site chrome (header / footer) + page fade =====
+   Used by every page after sign-up (letter/memories/inbox); index.html keeps its floating buttons.
+   The header is a paper bar in BOTH themes: every nav colour below is picked against --paper, never
+   against the teal/slate page. (--tab-on and --paper are the same light grey in dark, so --tab-on is NOT used
+   for any state here; --btn differs from --paper in both themes.) */
+html{background:var(--bg)}
+/* page fade-in: "backwards" fill only (no "forwards"), so once it ends the normal opacity:1 applies
+   and .page-leaving below can take over. Reduced motion: the global rule at the top of this file
+   sets animation:none, so the page is simply shown at full opacity. */
+body{animation:page-in .35s ease-out backwards}
+@keyframes page-in{from{opacity:0}}
+body.page-leaving{opacity:0;transition:opacity .2s ease-in}
+@media (prefers-reduced-motion:reduce){body.page-leaving{opacity:1}}
+/* chrome pages scroll as a normal document (the sign-up/stage pages keep the fixed, no-scroll body) */
+body.site{height:auto;min-height:100%;overflow:visible;display:flex;flex-direction:column}
+.site-header{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:1rem;
+ padding:.6rem clamp(1rem,3vw,2rem);padding-top:max(.6rem,env(safe-area-inset-top,0px));box-sizing:border-box;
+ background:var(--paper);color:var(--btn);border-bottom:1px solid var(--rule);box-shadow:0 6px 16px -8px rgba(var(--sh),.45)}
+.site-header :focus-visible{--ring:var(--ring-paper);outline-width:2px;outline-offset:2px}
+.hdr-brand{margin:0;min-width:0;font:700 clamp(1.5rem,2.2vw,2rem)/1.2 'Dancing Script',cursive;color:var(--btn);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdr-nav{display:flex;flex-wrap:wrap;justify-content:center;gap:.4rem}
+.hdr-link{box-sizing:border-box;padding:.35rem 1rem;border:1.5px solid transparent;border-radius:999px;text-decoration:none;
+ font:600 1rem/1.3 'Quicksand',sans-serif;color:var(--btn)}
+.hdr-link:hover{border-color:var(--btn)}
+/* current page: solid --btn pill (filled, strongest) */
+.hdr-link.is-current,.hdr-link[aria-current="page"]{color:var(--btn-text);background:var(--btn);border-color:var(--btn)}
+/* locked: visible but faded (60-70% --ink over --paper, ~3.7:1 in both themes), dashed outline, a lock,
+   not-allowed cursor, no hover change. Dashed + faded + lock = never mistaken for normal (solid
+   --btn text) or current (filled pill). Colours come from --ink/--paper, which differ in both themes. */
+.hdr-link.is-locked,.hdr-link[aria-disabled="true"]{color:color-mix(in srgb,var(--ink) 70%,var(--paper));
+ background:transparent;border:1.5px dashed color-mix(in srgb,var(--ink) 55%,var(--paper));cursor:not-allowed}
+.hdr-link.is-locked::after,.hdr-link[aria-disabled="true"]::after{content:"\1F512" / "";margin-left:.4em;font-size:.8em}
+.hdr-link.is-locked:hover,.hdr-link[aria-disabled="true"]:hover{border-color:color-mix(in srgb,var(--ink) 55%,var(--paper))}
+.hdr-actions{display:flex;align-items:center;justify-content:flex-end;gap:.6rem;min-width:0}
+/* round icon buttons. No display rule on purpose (centred by line-height) so [hidden] always wins. */
+.hdr-btn{position:relative;box-sizing:border-box;width:40px;height:40px;padding:0;border:1.5px solid var(--btn);border-radius:50%;
+ background:transparent;color:var(--btn);font:1.1rem/37px system-ui,sans-serif;text-align:center;text-decoration:none;cursor:pointer}
+.hdr-btn:hover{background:var(--btn);color:var(--btn-text)}
+.hdr-inbox::before{content:"\2709";font-size:1.15rem}
+.hdr-badge{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;border-radius:9px;
+ font:700 .7rem/18px 'Quicksand',sans-serif;text-align:center;color:var(--btn-text);background:var(--btn);box-shadow:0 0 0 2px var(--paper)}
+/* "tap to resume music": shown by script when autoplay is blocked. NO display rule, so [hidden] works. */
+.hdr-resume{padding:.35rem .9rem;border:0;border-radius:999px;font:600 .85rem/1.3 'Quicksand',sans-serif;color:var(--btn-text);background:var(--btn);cursor:pointer}
+.hdr-resume:hover{filter:brightness(1.25)}
+.site-main{flex:1 0 auto;position:relative}
+.site-footer{flex:0 0 auto;padding:1.2rem 4vw calc(1.2rem + env(safe-area-inset-bottom,0px));text-align:center}
+/* small text on the teal sits on a paper label (same trick as .hint); invisible in dark */
+.site-footer-text{display:table;margin:0 auto;padding:.1em .8em;border-radius:3px;background:var(--label);box-shadow:var(--label-sh);
+ font:italic 500 1rem/1.4 'Cormorant Garamond',Georgia,serif;color:var(--hint)}
+.site-footer-text:empty{display:none}
+/* below ~900px: one column, nothing clever */
+@media (max-width:900px){
+ .site-header{grid-template-columns:1fr;justify-items:center;gap:.5rem}
+ .hdr-brand{text-align:center;max-width:100%}
+ .hdr-actions{justify-content:center;flex-wrap:wrap}
+}
