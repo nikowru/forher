@@ -40,7 +40,7 @@ body::after{content:"";position:fixed;inset:0;z-index:29;pointer-events:none;bac
 #air span.pt{background:var(--petal);border-radius:70% 0 70% 0}
 @keyframes float{0%{transform:translate3d(0,10vh,0) rotate(0);opacity:0}10%{opacity:.55}90%{opacity:.4}100%{transform:translate3d(var(--dx),-115vh,0) rotate(360deg);opacity:0}}
 .stage{position:relative;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3vh;padding:0 4vw}
-h1{margin:0;font:400 clamp(2.6rem,min(8vw,13vh),7rem)/1.05 'Pinyon Script',cursive;color:var(--head);text-align:center;
+h1{margin:0;font:400 clamp(2.6rem,min(8vw,13vh),7rem)/1.05 'Pinyon Script',Georgia,serif;color:var(--head);text-align:center;
  text-shadow:0 2px 16px rgba(var(--sh),.28);transition:opacity .9s,transform .9s}
 .hint{margin:0;font-style:italic;font-weight:500;font-size:1.15rem;color:var(--hint);transition:opacity .6s}
 /* small text on the teal sits on a little paper label (ink on cream); invisible in the dark theme */
@@ -104,7 +104,7 @@ h1{margin:0;font:400 clamp(2.6rem,min(8vw,13vh),7rem)/1.05 'Pinyon Script',cursi
 .gallery.show .g-head{animation:head-in .9s .35s both}
 @keyframes head-in{from{opacity:0;transform:translateY(-12px)}}
 .g-head{text-align:center;margin-bottom:1.4rem}
-.g-head h2{margin:0;font:400 clamp(2.4rem,5vw,4.2rem)/1.15 'Pinyon Script',cursive;color:var(--head);text-shadow:0 2px 14px rgba(var(--sh),.28)}
+.g-head h2{margin:0;font:400 clamp(2.4rem,5vw,4.2rem)/1.15 'Pinyon Script',Georgia,serif;color:var(--head);text-shadow:0 2px 14px rgba(var(--sh),.28)}
 .g-head h2:focus{outline:none}
 .g-sub{display:inline-block;margin:.4rem 0 0;font-style:italic;font-weight:500;font-size:1.2rem;color:var(--hint)}
 .tabs{display:flex;flex-wrap:wrap;justify-content:center;gap:.5rem;margin:0 auto 1.6rem}
@@ -159,7 +159,7 @@ html:has(.player[open]) .gallery{overflow:hidden}
 .p-fallback p{margin:0;max-width:34ch;font-style:italic;font-weight:600;font-size:1.3rem;line-height:1.4;color:var(--ink)}
 .p-fallback a{padding:.45rem 1.4rem;border-radius:3px;font:italic 600 1.15rem 'Cormorant Garamond',Georgia,serif;color:var(--btn-text);background:var(--btn);text-decoration:none;box-shadow:0 3px 8px rgba(var(--sh),.35)}
 .p-fallback a:hover{filter:brightness(1.25)}
-.p-info h3{margin:0;font:400 clamp(1.8rem,3vw,2.4rem)/1.1 'Pinyon Script',cursive;color:var(--btn)}
+.p-info h3{margin:0;font:400 clamp(1.8rem,3vw,2.4rem)/1.1 'Pinyon Script',Georgia,serif;color:var(--btn)}
 .p-info p{margin:.3rem 0 0;font-style:italic;font-weight:500;font-size:1.2rem;color:var(--ink)}
 .p-close{position:absolute;top:-16px;right:-16px;z-index:1;width:42px;height:42px;border-radius:50%;border:0;cursor:pointer;
  font-size:1.6rem;line-height:1;color:var(--btn-text);background:var(--btn);box-shadow:0 4px 12px rgba(var(--sh),.5)}

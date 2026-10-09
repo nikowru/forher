@@ -36,12 +36,14 @@ Everything she reads is in the `CONFIG` block at the top of `script.js`:
 
 ```js
 const CONFIG = {
+  pageTitle: "A little something for you", // text on the browser tab
   heading: "Would You Like To Open?",   // big title on the envelope screen
   hint: "A little something for you",   // small line under the envelope
   letter: ["My love,", "...", "Always yours,", "(your name)"], // one string per paragraph
   button: "Continue",                   // button at the bottom of the letter
   gallery: { title, sub, all, empty, error },     // gallery heading, subtitle, "All" tab, messages
-  player:  { close, previous, next, unavailable, openOnYouTube } // player labels and fallback text
+  player:  { close, previous, next, unavailable, openOnYouTube }, // player labels and fallback text
+  labels:  { theme, seal, collections, letter }                   // read aloud by screen readers only
 };
 ```
 
@@ -84,6 +86,7 @@ Clips live in `clips.json`. Adding a clip means adding one entry; no code change
 - **Order:** slots appear in the same order as the list.
 - **Collections:** a new collection only needs an entry in `collections`. Its tab appears automatically.
 - **Icon:** optional.
+- **Typos:** open the browser console (F12) after editing. A duplicate id, a wrong-length video ID, a bad date or an unknown collection each shows a yellow warning naming the clip.
 
 ### Getting the video ID from a YouTube link
 
@@ -97,6 +100,7 @@ Clips live in `clips.json`. Adding a clip means adding one entry; no code change
 
 - **Visibility:** upload as **Unlisted**, not Private. Private videos won't play for her.
 - **Embedding:** must be **allowed**. In YouTube Studio, open the video, then **Details**, **Show more**, and tick **Allow embedding**.
+- **Other people's videos:** these, especially music videos, often turn embedding off, so the IDs in the examples above may not play here. Your own uploads with embedding allowed will.
 - **Music:** copyrighted music can get a clip blocked from playing on other sites. If that happens, the player shows the caption and an **Open on YouTube** button instead, so nothing breaks. Still, test every clip before the reveal.
 - **Medal clips:** not supported yet. The page only plays YouTube.
 

@@ -1,5 +1,6 @@
 // ---- Edit all wording here ----
 const CONFIG = {
+  pageTitle: "A little something for you", // the browser tab
   heading: "Would You Like To Open?",
   hint: "A little something for you",
   letter: ["My love,", "Your message goes here: a memory, a promise, something only the two of us would understand.", "Always yours,", "(your name)"],
@@ -16,9 +17,14 @@ const CONFIG = {
     close: "Close", previous: "Previous clip", next: "Next clip",
     unavailable: "This clip can't play here, but you can still watch it on YouTube.",
     openOnYouTube: "Open on YouTube"
-  }
+  },
+  // read aloud by screen readers only
+  labels: { theme: "Minimal theme", seal: "Open the envelope", collections: "Collections", letter: "Letter" }
 };
 const $ = id => document.getElementById(id);
+document.title = CONFIG.pageTitle;
+$("theme").setAttribute("aria-label", CONFIG.labels.theme); $("seal").setAttribute("aria-label", CONFIG.labels.seal);
+$("tabs").setAttribute("aria-label", CONFIG.labels.collections);
 $("title").textContent = CONFIG.heading; $("hint").textContent = CONFIG.hint; $("go").textContent = CONFIG.button;
 $("g-title").textContent = CONFIG.gallery.title; $("g-sub").textContent = CONFIG.gallery.sub;
 $("p-close").setAttribute("aria-label", CONFIG.player.close);
@@ -48,7 +54,7 @@ $("seal").addEventListener("click", () => {
     // a long letter scrolls inside the paper; let keyboard users reach it too
     const text = $("text");
     if (text.scrollHeight > text.clientHeight) {
-      text.tabIndex = 0; text.setAttribute("role", "region"); text.setAttribute("aria-label", "Letter");
+      text.tabIndex = 0; text.setAttribute("role", "region"); text.setAttribute("aria-label", CONFIG.labels.letter);
       const more = () => text.classList.toggle("more", text.scrollTop + text.clientHeight < text.scrollHeight - 2);
       text.addEventListener("scroll", more, { passive: true }); more();
     }
@@ -186,9 +192,22 @@ player.addEventListener("close", () => {
   const s = grid.querySelectorAll(".slot")[current]; if (s) s.focus(); // back to the clip she was on
 });
 
+// friendly warnings in the console (F12) while adding clips; the page still shows what it can
+function checkClips(data) {
+  const cols = new Set((data.collections || []).map(c => c.id)), ids = new Set();
+  for (const c of data.clips || []) {
+    const w = msg => console.warn("clips.json, clip " + (c.id || "(no id)") + ": " + msg);
+    if (ids.has(c.id)) w("duplicate id"); ids.add(c.id);
+    if (!/^[\w-]{11}$/.test(c.youtubeId || "")) w("youtubeId should be the 11-character id from the YouTube link");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(c.date || "")) w("date should look like 2023-05-14");
+    if (!cols.has(c.collection)) w('collection "' + c.collection + '" is not listed in "collections"');
+    if (!c.title || !c.caption) w("missing title or caption");
+  }
+}
+
 fetch("clips.json")
   .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-  .then(data => { clips = data.clips || []; buildTabs(data.collections || []); showTab("all"); })
+  .then(data => { checkClips(data); clips = data.clips || []; buildTabs(data.collections || []); showTab("all"); })
   .catch(err => {
     console.error("clips.json could not be loaded. Open the site through a local server (see README).", err);
     msg.textContent = CONFIG.gallery.error;
