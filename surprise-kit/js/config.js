@@ -109,6 +109,7 @@ const CONFIG = {
     submit: "submit sa baby ko",
     nudge: "Say anything, or leave it blank — I'll still see this.",
     inboxTitle: "What you wrote",
+    inboxEmpty: "Nothing here yet.",
     placeholder: "Write something here...",
     toMemories: "Open our memories"
   }
