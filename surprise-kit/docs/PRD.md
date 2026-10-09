@@ -79,7 +79,7 @@ Adds a one-time sign-up step before Scene 1, and replaces the old "Continue" cli
 
 **Constraints on all of the above (extends section 4.1's rules):**
 - Only the existing CSS custom properties / two palettes may be used for any new UI (light: #5BC2C3, #22575E, #F0EDDA, #5C4130; dark: #374151, #6B7280, #D1D5DB, #F3F4F6), switched by `data-theme`, exactly as today. The red wax seal is the only exception and stays as-is. Any hover/selected/shadow/dimmed shade is derived from these tokens via opacity, `color-mix()`, or an overlay - never a new hex value.
-- File structure stays index.html (structure only) / style.css (all styling) / script.js (all logic, including the `CONFIG` wording block and the new `ICONS` and `MUSIC` arrays) - no inline CSS or JS in HTML, no new JS/CSS files. New binary assets live under `/assets/icons/` and `/assets/music/` (placeholders until I supply real files).
+- File structure: SUPERSEDED by section 4.4 (proposed multi-page split, pending approval). Until approved: index.html (structure only) / style.css (all styling) / script.js (all logic, including the `CONFIG` wording block and the new `ICONS` and `MUSIC` arrays) - no inline CSS or JS in HTML, no new JS/CSS files. New binary assets live under `/assets/icons/` and `/assets/music/` (placeholders until I supply real files).
 - Accessibility: every new control keeps a visible focus state and is keyboard-operable (choosing a mood, an icon, a track, and the Yes/No step included - "No" evading focus must still land somewhere reachable, never trap keyboard users); contrast holds in both themes; every new animation (unfold, dim/light-up, fold-to-inbox, the No dodge) has a non-motion or simpler-motion alternative under `prefers-reduced-motion`.
 - Process: Decision E already lets me pre-approve a batch of tasks instead of one-at-a-time review; Phase 3 is planned as one such batch, but tasks stay small (45 minutes or less) so I can still review individually if I choose to.
 
@@ -98,6 +98,16 @@ Settles what was open in section 12 about where the letter reply goes, and becom
 - If the CSV fetch fails for any reason, the site falls back to the clips.json placeholders already in script.js; FR-3/FR-9 behavior is unchanged either way.
 
 **Setup** (documented step by step in README, per the release task in docs/board.md): create the Sheet with its two tabs; paste in the Apps Script source; deploy it as a web app; copy the resulting URL into one config value in script.js; publish the Memories tab as CSV and copy that URL too. The README also explains, in plain language: Apps Script's quotas/limits, that the first response after the script has sat idle can be slow, and that redeploying as a "new version" keeps the same web app URL while a "new deployment" issues a new one (which would mean updating script.js's config value).
+
+### 4.4 Multi-page structure (APPROVED 2026-10-09; see docs/board.md Phase 4)
+Turns the one-page experience into an "official" multi-page site with the same scenes, in this order of unlocking.
+- Pages (plain static HTML, no build step, relative links): `index.html` sign-up; `letter.html` intro, seal, letter, reply, fold-to-inbox, light-up and a button to memories; `memories.html` the clip inventory (collection filters, numbered slots, YouTube player); `inbox.html` her saved reply.
+- Shared: one `style.css` (the two palettes stay CSS variables on `data-theme`); `js/config.js` (all wording, `ICONS`, `MUSIC`), `js/common.js` (theme, storage helpers, music, header, guards, page fade), and one file per page (`signup.js`, `letter.js`, `memories.js`, `inbox.js`) loaded only on that page. Classic scripts, not ES modules, so it also works opened from a folder (section 7's "ES-module" wording is relaxed to this). No inline CSS or JS in any HTML file.
+- Header on every page after sign-up: brand text (from CONFIG, script font) left; Letter / Memories / Inbox links centre, locked (greyed, not hidden) until unlocked; inbox icon with badge, mute button and theme toggle right. Simple footer with editable placeholder text; no invented personal content. Per-page titles, SVG favicon, meta tags; short fade between pages.
+- State in localStorage (try/catch): sign-up answers, reply, `surprise-progress` unlock flags, music `{track, time, muted}`. Unlock rules: letter after sign-up Yes; memories and inbox after the reply. Guards redirect out-of-order visits to the right page. `?reset=1` clears everything.
+- Music: saved track/time/muted resume at about 15% volume on the next page, with a small "tap to resume music" header button when the browser blocks autoplay. A page change always causes a brief audible gap; truly gapless playback is not possible without single-page navigation.
+- Layout: laptop-first (tested at 1366x768, 1440x900, 1920x1080); below about 900px pages stack to one column and nothing more.
+- Data backend (section 4.3) and the Phase 3 behaviours are unchanged.
 
 ## 5. Functional requirements
 | ID | Requirement |
@@ -144,7 +154,7 @@ The sheet never exposes these rows back to the site - they are read only by me, 
 ## 7. Tech stack
 | Layer | Choice | Why |
 |---|---|---|
-| Frontend | Plain HTML, CSS, ES-module JavaScript, no build step | Nothing to break on reveal day; easy to edit |
+| Frontend | Plain HTML, CSS, JavaScript, no build step; multi-page with classic shared scripts (section 4.4, proposed) | Nothing to break on reveal day; easy to edit; works from a folder |
 | Data (phase 1, fallback) | clips.json in the repo | 100 to 500 clips is tiny; loads instantly; no server; used if the CSV fetch below fails |
 | Data (phase 2, settled 2026-10-09) | Google Sheets (private, in my own Drive) + one Google Apps Script web app: `doPost` appends sign-up/reply rows to a "Responses" tab (write-only, never serves them back); a "Memories" tab is published as CSV and fetched by the site for clips (section 4.3, section 6) | Free, no server to host; I can add clips from my phone without redeploying; replies stay private since the script can't be asked to return them; replaces the earlier Supabase idea and the three delivery options once listed in section 12 |
 | Video | Unlisted YouTube, embedded with the IFrame Player API on youtube-nocookie.com | Free, handles large or long clips |
