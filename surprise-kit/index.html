@@ -10,17 +10,77 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=Cormorant+Garamond:ital,wght@1,500;1,600&display=swap" rel="stylesheet">
+<!-- Phase 3.1 S2: sign-up-only typography (Dancing Script for .su-title/#su-final-q, Quicksand for
+     labels/inputs/buttons/track names) - added alongside the link above, which still serves
+     Pinyon Script/Cormorant Garamond to every other screen; nothing here replaces that link. -->
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Quicksand:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<section class="signup" id="signup" aria-labelledby="su-title">
+  <div class="su-card">
+    <h1 class="su-title" id="su-title"></h1>
+    <form class="su-form" id="su-form" novalidate>
+      <div class="su-step" data-step="username">
+        <label class="su-label" for="su-username"></label>
+        <input class="su-input" type="text" id="su-username" name="username" autocomplete="off" maxlength="40">
+      </div>
+      <div class="su-step" data-step="mood">
+        <p class="su-label" id="su-mood-label"></p>
+        <div class="su-moods" id="su-moods" role="group" aria-labelledby="su-mood-label"></div>
+      </div>
+      <div class="su-step" data-step="icon">
+        <p class="su-label" id="su-icon-label"></p>
+        <div class="su-icons" id="su-icons" role="group" aria-labelledby="su-icon-label"></div>
+      </div>
+      <div class="su-step" data-step="music">
+        <p class="su-label" id="su-music-label"></p>
+        <ul class="su-tracks" id="su-tracks" role="list"></ul>
+      </div>
+      <div class="su-step su-final" data-step="final">
+        <p class="su-label" id="su-final-q"></p>
+        <div class="su-yesno" role="group" aria-labelledby="su-final-q">
+          <button type="submit" class="su-yes" id="su-yes"></button>
+          <button type="button" class="su-no" id="su-no"></button>
+        </div>
+      </div>
+      <div class="su-hp" aria-hidden="true">
+        <label for="su-website">Website</label>
+        <input type="text" id="su-website" name="website" tabindex="-1" autocomplete="off">
+      </div>
+    </form>
+  </div>
+</section>
 <div id="air" aria-hidden="true"></div>
 <button class="theme" id="theme"></button>
+<button class="inbox" id="inbox" type="button" hidden>
+  <span class="inbox-badge" id="inbox-badge" hidden></span>
+</button>
+<dialog class="inbox-view" id="inbox-view" aria-labelledby="inbox-title">
+  <div class="inbox-box">
+    <button class="inbox-close" id="inbox-close" type="button"><span aria-hidden="true">&times;</span></button>
+    <h3 id="inbox-title"></h3>
+    <p id="inbox-text"></p>
+  </div>
+</dialog>
 <main class="stage" id="stage">
+  <p class="intro-msg" id="intro-msg"></p>
   <h1 id="title"></h1>
   <div class="scene" id="scene">
     <div class="book" aria-hidden="true"></div>
     <div class="back"></div>
-    <div class="letter" id="letter" inert><div class="text" id="text"></div><button class="go" id="go"></button></div>
+    <div class="letter" id="letter" inert><div class="text" id="text"></div>
+      <form class="reply" id="reply-form" novalidate>
+        <label class="reply-label" for="reply-text"></label>
+        <textarea class="reply-text" id="reply-text" maxlength="500"></textarea>
+        <p class="reply-nudge" id="reply-nudge" role="status" hidden></p>
+        <div class="reply-hp" aria-hidden="true">
+          <label for="reply-website">Website</label>
+          <input type="text" id="reply-website" name="website" tabindex="-1" autocomplete="off">
+        </div>
+        <button type="submit" class="reply-submit" id="reply-submit"></button>
+      </form>
+      <button class="go" id="go" hidden></button></div>
     <svg class="front" viewBox="0 0 100 64" preserveAspectRatio="none" aria-hidden="true">
       <polygon points="0,0 50,36 0,64"/>
       <polygon points="100,0 50,36 100,64"/>

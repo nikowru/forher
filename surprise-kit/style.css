@@ -47,7 +47,7 @@ h1{margin:0;font:400 clamp(2.6rem,min(8vw,13vh),7rem)/1.05 'Pinyon Script',Georg
 .hint,.g-sub,.g-msg{padding:.1em .8em;border-radius:3px;background:var(--label);box-shadow:var(--label-sh)}
 .fade{opacity:0!important;transform:translateY(-14px)}
 /* scene */
-.scene{--w:min(560px,86vw,64vh);--lh:calc(var(--w)*.058);position:relative;width:var(--w);height:calc(var(--w)*.64);perspective:1400px;transition:opacity .8s}
+.scene{--w:min(560px,86vw,64vh);--lh:calc(var(--w)*.058);position:relative;width:var(--w);height:calc(var(--w)*.64);perspective:1400px;transition:opacity .8s,transform 1.15s cubic-bezier(.22,.9,.3,1)}
 .scene::before{content:"";position:absolute;inset:-45%;background:radial-gradient(closest-side,var(--glow),transparent);pointer-events:none}
 .scene.gone{opacity:0;pointer-events:none}
 .back{position:absolute;inset:0;z-index:0;border-radius:4px;background:linear-gradient(160deg,var(--env1),var(--env2));box-shadow:0 26px 40px -14px rgba(var(--sh),.5),0 4px 10px rgba(var(--sh),.22)}
@@ -59,9 +59,12 @@ h1{margin:0;font:400 clamp(2.6rem,min(8vw,13vh),7rem)/1.05 'Pinyon Script',Georg
 .letter{--ruled:repeating-linear-gradient(transparent 0,transparent calc(var(--lh) - 1px),var(--rule) calc(var(--lh) - 1px),var(--rule) var(--lh));
  position:absolute;left:50%;bottom:3%;width:80%;height:94%;z-index:2;transform:translateX(-50%);box-sizing:border-box;border-radius:3px;
  background:var(--ruled),var(--paper);
- box-shadow:0 8px 22px rgba(var(--sh),.3);transition:transform 1.2s cubic-bezier(.3,.7,.2,1)}
+ box-shadow:0 8px 22px rgba(var(--sh),.3);transition:transform 1.2s cubic-bezier(.3,.7,.2,1),height 1.2s cubic-bezier(.3,.7,.2,1)}
 .scene.rise .letter{transform:translateX(-50%) translateY(-58%) rotate(-1deg)}
-.scene.read .letter{z-index:6;transform:translateX(-50%) translateY(-38%) scale(1.22) rotate(0)}
+/* height grows only once the letter is fully open and readable, so the seal->flap->rise
+   motion above stays pixel-identical to before; the extra room is only for the reply
+   section (Phase 3 P6), which sits below #text and is inert (unreachable) until this point */
+.scene.read .letter{z-index:6;height:124%;transform:translateX(-50%) translateY(-38%) scale(1.22) rotate(0)}
 /* text area: exactly 7 ruled lines, one rule down, above Continue; long letters scroll with their own lines */
 .text{position:absolute;top:var(--lh);height:calc(var(--lh)*7);left:0;right:0;padding:0 calc(var(--w)*.07);overflow:hidden;
  background:var(--ruled),var(--paper);background-attachment:local;scrollbar-width:thin;scrollbar-color:var(--rule) transparent}
@@ -72,6 +75,32 @@ h1{margin:0;font:400 clamp(2.6rem,min(8vw,13vh),7rem)/1.05 'Pinyon Script',Georg
 .go{position:absolute;left:50%;bottom:calc(var(--lh)*.55);transform:translateX(-50%);padding:calc(var(--lh)*.22) calc(var(--lh)*1.2);
  font:italic 600 calc(var(--lh)*.7) 'Cormorant Garamond',Georgia,serif;color:var(--btn-text);background:var(--btn);border:0;border-radius:3px;cursor:pointer;box-shadow:0 3px 8px rgba(var(--sh),.35)}
 .go:hover{filter:brightness(1.25)}
+/* letter reply (Phase 3 P6): sits below the 7-line .text block and above #go, inside the
+   same ruled-paper letter - reuses .letter's own --ruled/--rule gradient, not a new technique.
+   .letter grows from 94% to 124% tall once .scene.read is active (see that rule above) to make
+   room, without touching .text's line count, #go, or the seal->flap->rise motion beforehand. */
+/* invisible (not just inert) until .scene.read - before then the letter is still its shorter
+   94%-tall pre-read size (see .letter/.scene.read .letter above) and this region would
+   otherwise sit underneath #go for the ~1.25s .rise transition; opacity avoids that overlap
+   ever being visible without touching #go's own position or the rise timing */
+.reply{position:absolute;left:0;right:0;top:calc(var(--lh)*8.3);height:calc(var(--lh)*3.2);opacity:0;
+ display:flex;flex-direction:column;gap:calc(var(--lh)*.15);padding:0 calc(var(--w)*.07);box-sizing:border-box;transition:opacity .5s ease .7s}
+.scene.read .reply{opacity:1}
+.reply-label{margin:0;font-style:italic;font-weight:600;font-size:calc(var(--lh)*.42);line-height:1.15;color:var(--ink)}
+.reply-text{flex:1 1 auto;min-height:0;width:100%;box-sizing:border-box;resize:none;padding:.1em 0;border:0;border-radius:0;
+ font:italic 600 calc(var(--lh)*.5)/calc(var(--lh)*.92) 'Cormorant Garamond',Georgia,serif;color:var(--ink);
+ background:var(--ruled),transparent;background-attachment:local;outline-offset:2px}
+.reply-text::placeholder{color:var(--ink);opacity:.5}
+/* hidden by default; shown on an empty submit (see script.js) - no competing display
+   rule here. (P8: the sign-up flow never grew its own equivalent nudge, so this was
+   the only one that needed this caution; a stray unused .su-nudge rule has been removed.) */
+.reply-nudge{margin:0;font-style:italic;font-weight:500;font-size:calc(var(--lh)*.4);line-height:1.15;color:var(--ink)}
+.reply-submit{align-self:flex-start;flex:0 0 auto;padding:calc(var(--lh)*.1) calc(var(--lh)*.6);
+ font:italic 600 calc(var(--lh)*.46) 'Cormorant Garamond',Georgia,serif;color:var(--btn-text);background:var(--btn);border:0;border-radius:3px;cursor:pointer;box-shadow:0 2px 6px rgba(var(--sh),.3)}
+.reply-submit:hover{filter:brightness(1.25)}
+/* honeypot: identical technique to .su-hp - off-screen clip, not display:none, so a bot
+   that ignores CSS still "sees" and can fill it; tabindex=-1 in the markup keeps it out of Tab */
+.reply-hp{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;white-space:nowrap;clip:rect(0,0,0,0);clip-path:inset(50%)}
 /* wax seal */
 .seal{position:absolute;left:50%;top:56%;z-index:7;width:calc(var(--w)*.17);aspect-ratio:1;padding:0;border:0;cursor:pointer;
  transform:translate(-50%,-50%);border-radius:52% 48% 50% 50%/50% 52% 48% 50%;
@@ -86,12 +115,14 @@ h1{margin:0;font:400 clamp(2.6rem,min(8vw,13vh),7rem)/1.05 'Pinyon Script',Georg
 @keyframes snap{0%{transform:translate(-50%,-50%);opacity:1}25%{transform:translate(-50%,-50%) scale(1.15) rotate(-5deg);opacity:1}100%{transform:translate(-50%,-5%) rotate(20deg) scale(.9);opacity:0}}
 .seal:focus-visible,.go:focus-visible{outline-offset:4px}
 /* decor */
-.flowers{position:absolute;left:-19%;bottom:-6%;width:31%;z-index:5;pointer-events:none;filter:drop-shadow(0 6px 8px rgba(var(--sh),.3))}
+.flowers{position:absolute;left:-19%;bottom:-6%;width:31%;z-index:5;pointer-events:none;filter:drop-shadow(0 6px 8px rgba(var(--sh),.3));
+ transition:opacity .9s ease .35s,transform .9s cubic-bezier(.3,.8,.3,1) .35s}
 .flowers use{fill:var(--fl-head)}
 .flowers .stems{stroke:var(--fl-stem)}
 .flowers .tape{fill:var(--fl-tape)}
 .book{position:absolute;right:-20%;bottom:-3%;width:27%;aspect-ratio:.78;z-index:0;transform:rotate(9deg);border-radius:3px;overflow:hidden;
- background:linear-gradient(90deg,var(--bk1),var(--bk2) 46%,var(--bk3) 50%,var(--bk2) 54%,var(--bk1));box-shadow:0 12px 20px rgba(var(--sh),.38)}
+ background:linear-gradient(90deg,var(--bk1),var(--bk2) 46%,var(--bk3) 50%,var(--bk2) 54%,var(--bk1));box-shadow:0 12px 20px rgba(var(--sh),.38);
+ transition:opacity .9s ease .45s,transform .9s cubic-bezier(.3,.8,.3,1) .45s}
 .book::before,.book::after{content:"";position:absolute;top:12%;bottom:12%;width:36%;background:repeating-linear-gradient(rgba(var(--sh),.42) 0 2px,transparent 2px 7px)}
 .book::before{left:9%}.book::after{right:9%}
 /* scene 2: clip inventory */
@@ -165,8 +196,8 @@ html:has(.player[open]) .gallery{overflow:hidden}
  font-size:1.6rem;line-height:1;color:var(--btn-text);background:var(--btn);box-shadow:0 4px 12px rgba(var(--sh),.5)}
 .p-close:hover{filter:brightness(1.25)}
 /* floating round buttons sit on mixed or darker backgrounds, so their ring is a self-contained light/dark/light band */
-.p-close:focus-visible,.theme:focus-visible{--ring:var(--ring-out);outline-offset:2px;box-shadow:0 0 0 7px var(--ring-in)}
-.p-close:focus-visible{box-shadow:0 0 0 7px var(--ring-in),0 4px 12px rgba(var(--sh),.5)}
+.p-close:focus-visible,.theme:focus-visible,.mute:focus-visible,.inbox:focus-visible,.inbox-close:focus-visible{--ring:var(--ring-out);outline-offset:2px;box-shadow:0 0 0 7px var(--ring-in)}
+.p-close:focus-visible,.inbox-close:focus-visible{box-shadow:0 0 0 7px var(--ring-in),0 4px 12px rgba(var(--sh),.5)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01ms!important}#air{display:none}
  .gallery{clip-path:none!important;transition:opacity .6s!important}}
 
@@ -174,5 +205,181 @@ html:has(.player[open]) .gallery{overflow:hidden}
 .front polygon{stroke:var(--env-edge);stroke-width:.3}
 .front polygon:nth-child(-n+2){fill:var(--el)}
 .front polygon:nth-child(3){fill:var(--eb)}
-.theme{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:16px;z-index:40;width:42px;height:42px;border-radius:50%;border:1.5px solid var(--head);background:var(--theme-bg);color:var(--head);font-size:1.25rem;line-height:1;cursor:pointer}
+/* z-index:55 (above .signup's 50, Phase 3.1 S1): the sign-up overlay used to bury this
+   button even though it's present in the DOM on every screen including sign-up - this is
+   the only change needed to make it visible/clickable there again, same top-right spot. */
+.theme{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:16px;z-index:55;width:42px;height:42px;border-radius:50%;border:1.5px solid var(--head);background:var(--theme-bg);color:var(--head);font-size:1.25rem;line-height:1;cursor:pointer}
 .theme:hover{background:rgba(var(--sh),.15)}
+/* mute control (Phase 3 P4): same fixed-toolbar treatment as .theme, reusing its vars - no new colors */
+.mute{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:66px;z-index:40;width:42px;height:42px;border-radius:50%;border:1.5px solid var(--head);background:var(--theme-bg);color:var(--head);font-size:1.1rem;line-height:1;cursor:pointer}
+.mute:hover{background:rgba(var(--sh),.15)}
+
+/* sign-up gate (Phase 3 P1, reworked Phase 3.1 S1/S2): a wide, centered card with a
+   2-column grid above ~800px (username+mood left, icon+music right), single column
+   below. Mobile-friendly by request (320px-1920px) - the one screen that isn't
+   desktop-first - but also sized so a 1366x768 laptop needs little/no scrolling. */
+.signup{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;overflow-y:auto;box-sizing:border-box;
+ padding:max(20px,env(safe-area-inset-top,0px)) 16px calc(env(safe-area-inset-bottom,0px) + 20px);
+ background:radial-gradient(ellipse at 50% 35%,var(--bg-hi),var(--bg) 70%),var(--bg)}
+@supports (align-items:safe center){.signup{align-items:safe center;justify-content:safe center}}
+.su-card{width:min(960px,94vw);max-width:1000px;box-sizing:border-box;margin:auto;padding:clamp(1.2rem,3vw,2rem) clamp(1.2rem,4vw,2.4rem);
+ display:flex;flex-direction:column;gap:1rem;border-radius:8px;background:var(--paper);
+ box-shadow:0 26px 50px -16px rgba(var(--sh),.5),0 4px 10px rgba(var(--sh),.22)}
+.su-card :focus-visible{--ring:var(--ring-paper)}
+/* Dancing Script is scoped to this title and #su-final-q only (D-title-font-scope reading (a)) -
+   h1/.g-head h2/.p-info h3/#inbox-title all stay on Pinyon Script, untouched. clamp()+max-width+
+   text-wrap:balance (progressive enhancement, harmless if unsupported) keep it from ever
+   wrapping down to a lonely last word. */
+.su-title{margin:0 auto;max-width:22ch;text-align:center;text-wrap:balance;
+ font:600 clamp(2.1rem,4.4vw,3.2rem)/1.2 'Dancing Script',cursive;color:var(--btn);text-shadow:0 2px 10px rgba(var(--sh),.22)}
+.su-form{display:grid;grid-template-columns:1fr;grid-template-areas:"username" "mood" "icon" "music" "final";gap:1.1rem;min-width:0}
+@media (min-width:800px){
+  .su-form{grid-template-columns:1fr 1fr;column-gap:2.2rem;grid-template-areas:"username icon" "mood music" "final final"}
+}
+.su-step{display:flex;flex-direction:column;gap:.6rem;padding-bottom:1rem;border-bottom:1px solid var(--rule);min-width:0}
+.su-step[data-step="username"]{grid-area:username}
+.su-step[data-step="mood"]{grid-area:mood}
+.su-step[data-step="icon"]{grid-area:icon}
+.su-step[data-step="music"]{grid-area:music}
+/* final step: spans the full width below the 2-column grid, centered; no border/padding
+   carried over from .su-step, and a small negative margin trims the leftover row-gap above
+   it so nothing reads as dead space between the grid and the question. */
+.su-final{grid-area:final;border-bottom:0;padding-bottom:0;padding-top:0;margin-top:-.3rem;align-items:center;text-align:center}
+.su-label{margin:0;text-align:left;font:600 1rem/1.3 'Quicksand',sans-serif;color:var(--ink)}
+#su-final-q{text-align:center;max-width:32ch;margin:0 auto;text-wrap:balance;
+ font:600 clamp(1.3rem,3vw,1.7rem)/1.3 'Dancing Script',cursive;color:var(--ink)}
+.su-input{width:100%;box-sizing:border-box;padding:.4em .2em;font:500 1.05rem/1.3 'Quicksand',sans-serif;
+ color:var(--ink);background:transparent;border:0;border-bottom:2px solid var(--rule);border-radius:0}
+.su-input:focus-visible{border-bottom-color:var(--accent)}
+.su-input::placeholder{color:var(--ink);opacity:.5}
+/* mood picker: a single row of circles (script.js's renderMoods() sets textContent to the
+   emoji and aria-label to MOODS' label field, e.g. "A little down" - no visible label text
+   node exists yet, so the ::after below reads that same aria-label via attr() to show it
+   underneath each circle without any script.js change). [aria-pressed="true"] gets a ring +
+   scale bump so the selected mood is unambiguous at a glance. */
+.su-moods{display:flex;flex-wrap:wrap;gap:.8rem;justify-content:center;min-height:56px;padding-bottom:1.3rem}
+.su-mood{flex:0 0 auto;position:relative;width:clamp(44px,10vw,52px);height:clamp(44px,10vw,52px);padding:0;
+ display:flex;align-items:center;justify-content:center;overflow:visible;
+ font-size:clamp(1.6rem,4.5vw,2.1rem);line-height:1;color:var(--tab-ink);background:var(--tab);border:1.5px solid var(--slot-edge);border-radius:50%;cursor:pointer;
+ transition:transform .15s ease,box-shadow .15s ease}
+.su-mood:hover{border-color:var(--accent)}
+.su-mood:focus-visible{outline-offset:2px}
+/* selected states ring in --btn, not --tab-on: in the dark theme --tab-on is the same #f3f4f6
+   as the card's --paper, so a fill alone is invisible against the card (QA S5). --btn is the
+   primary button colour in both themes, so it reads as a defined edge on cream and on white. */
+.su-mood[aria-pressed="true"]{color:var(--tab-on-ink);background:var(--tab-on);border-color:var(--btn);
+ transform:scale(1.1);box-shadow:0 0 0 3px color-mix(in srgb,var(--btn) 45%,transparent),0 4px 10px rgba(var(--sh),.35)}
+.su-mood::after{content:attr(aria-label);position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:.35rem;width:6em;
+ font:600 .62rem/1.15 'Quicksand',sans-serif;color:var(--ink);text-align:center;white-space:normal;pointer-events:none}
+@media (prefers-reduced-motion:reduce){.su-mood{transition:none}}
+/* icon picker: one horizontal row (not a wrapping grid), each icon with a visible label
+   underneath (same attr(aria-label) technique as the moods above, reading ICONS' label
+   field - "One".."Five" today, the real icon names once D-assets' placeholders are swapped).
+   overflow-x:auto is a narrow-mobile safety net so the row never breaks into a wrap. */
+/* wraps rather than scrolling: at 360px, and in the 2-column cell between ~800-945px, five
+   icons on one nowrap row overflowed and clipped (QA S5). It still sits on one row wherever
+   there's room, which is every desktop width. */
+.su-icons{display:flex;flex-wrap:wrap;gap:.7rem;justify-content:center;padding:.2rem .1rem 1rem;min-height:auto}
+.su-icon{flex:0 0 auto;box-sizing:border-box;width:clamp(46px,13vw,68px);padding:.5rem .3rem .4rem;
+ display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.3rem;
+ color:var(--ink);background:var(--tab);border:1.5px solid var(--slot-edge);border-radius:8px;cursor:pointer}
+.su-icon img{width:28px;height:28px;flex:0 0 auto}
+/* --ink, not --tab-ink: --tab-ink is #f3f4f6 in the dark theme, identical to the card's
+   --paper behind the transparent --tab, so these labels were invisible there (QA S5). */
+.su-icon::after{content:attr(aria-label);font:600 .62rem/1.15 'Quicksand',sans-serif;color:var(--ink);text-align:center;white-space:nowrap}
+.su-icon:hover{border-color:var(--accent)}
+.su-icon:focus-visible{outline-offset:2px}
+.su-icon[aria-pressed="true"]{color:var(--tab-on-ink);background:var(--tab-on);border-color:var(--btn);
+ box-shadow:0 0 0 3px color-mix(in srgb,var(--btn) 45%,transparent)}
+.su-icon[aria-pressed="true"]::after{color:var(--tab-on-ink)}
+/* track list: a horizontal row of pill buttons (title + a music-note glyph via ::before,
+   currentColor so it follows .su-track's own text color/theme) instead of the old stacked
+   full-width list. Wraps on very narrow widths rather than forcing a scrollbar, since track
+   titles can run long. */
+.su-tracks{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center;min-height:48px}
+.su-tracks li{display:flex}
+.su-track{box-sizing:border-box;display:inline-flex;align-items:center;gap:.5rem;padding:.55rem 1.1rem;
+ font:600 .95rem/1.2 'Quicksand',sans-serif;color:var(--ink);background:var(--tab);border:1.5px solid var(--slot-edge);border-radius:999px;cursor:pointer}
+.su-track::before{content:"\266A";font-size:1rem;line-height:1;color:currentColor}
+.su-track:hover{border-color:var(--accent)}
+/* same --btn ring as the moods/icons: with --tab-on's fill alone, a selected track in the dark
+   theme was indistinguishable from an unselected one - identical text colour, and its border
+   turned the card's own white (QA S5 follow-up). */
+.su-track[aria-selected="true"],.su-track.selected{color:var(--tab-on-ink);background:var(--tab-on);border-color:var(--btn);
+ box-shadow:0 0 0 3px color-mix(in srgb,var(--btn) 45%,transparent)}
+/* final yes/no step: .su-yesno stays the positioned ancestor (position:relative) that
+   gallery-dev's upcoming physics rewrite (S3/S4) anchors #su-no's eventual position:absolute
+   to - that contract is unchanged here, su-no is still plain layout, no motion added. */
+.su-yesno{position:relative;display:flex;flex-wrap:wrap;gap:1rem;justify-content:center;margin-top:.3rem}
+.su-yes,.su-no{box-sizing:border-box;min-width:7em;padding:.6em 1.6em;border-radius:4px;cursor:pointer;
+ font:600 1.05rem/1.2 'Quicksand',sans-serif}
+.su-yes{color:var(--btn-text);background:var(--btn);border:0;box-shadow:0 3px 8px rgba(var(--sh),.35)}
+.su-yes:hover{filter:brightness(1.25)}
+.su-no{color:var(--btn);background:transparent;border:1.5px solid var(--btn)}
+.su-no:hover{background:var(--btn);color:var(--btn-text)}
+/* honeypot: off-screen clip, not display:none (bots skip that); tabindex=-1 in the markup already keeps it out of Tab */
+.su-hp{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;white-space:nowrap;clip:rect(0,0,0,0);clip-path:inset(50%)}
+
+/* Phase 3 P5: intro dim-and-unfold. #stage's DEFAULT (no class) state is the normal, fully
+   lit, fully-entered look exactly as it is today - so a returning visit with a saved sign-up
+   (script.js never adds these classes on that path) goes straight to today's #stage with no
+   intro replay, by design: see script.js for the one-time trigger. Only a just-finished,
+   first-time sign-up adds #stage.intro-pre for one frame (a "not yet entered" start state for
+   .scene/.flowers/.book) and then removes it, so the existing transitions below animate them
+   into the very same resting look. The dim (#stage.intro-dim) and the heading
+   (#stage.intro-msg-on) are separate toggles the same script.js hook sets alongside it; the dim
+   is intentionally left on afterwards - it stays through the (unchanged) seal/letter/reply
+   steps and is only lifted by the later light-up task (P8), not here.
+   P8 note: the light-up is just this same #stage.intro-dim class being removed (see
+   script.js's reply-submit flow) - the opacity transition below already runs symmetrically
+   in both directions, so dim-in (here) and light-up (P8) share one smooth 1.1s fade with no
+   separate rule needed; prefers-reduced-motion above already collapses it to .01ms either way. */
+#stage::after{content:"";position:fixed;inset:0;z-index:31;pointer-events:none;background:rgba(var(--sh),.5);opacity:0;transition:opacity 1.1s ease}
+#stage.intro-dim::after{opacity:1}
+#stage.intro-pre .scene{opacity:0;transform:translateY(-70vh)}
+#stage.intro-pre .flowers{opacity:0;transform:translateY(26px) scale(.8)}
+#stage.intro-pre .book{opacity:0;transform:translateY(26px) scale(.8)}
+.intro-msg{position:absolute;top:6%;left:50%;transform:translate(-50%,-10px);margin:0;max-width:86vw;text-align:center;
+ font:italic 600 clamp(1.5rem,4.2vw,2.3rem)/1.3 'Cormorant Garamond',Georgia,serif;color:var(--head);
+ /* sits over the intro dim overlay, where --head direct on --bg falls short of 4.5:1 (QA P11);
+    the same paper-label treatment already used for .hint/.g-sub on teal fixes it here too */
+ padding:.15em 1em;border-radius:4px;background:var(--label);box-shadow:var(--label-sh);
+ text-shadow:0 2px 12px rgba(var(--sh),.28);opacity:0;pointer-events:none;z-index:33;transition:opacity .9s ease,transform .9s ease}
+#stage.intro-msg-on .intro-msg{opacity:1;transform:translate(-50%,0)}
+/* reduced motion: the global rule near the top of this file already forces every transition
+   above to .01ms, so .intro-pre's offset/opacity-0 start state just snaps straight to the
+   normal resting look (opacity 1, no transform) the instant script.js removes the class -
+   a fade-with-no-travel rather than a broken half-moved frame. No extra override needed here. */
+
+/* Phase 3 P6: inbox icon + readback dialog. Static look only - hidden by default in the
+   markup; a later gallery-dev task shows/wires it (open on click, populate #inbox-text from
+   her saved reply, fold-in animation). Sized/placed like .theme/.mute; the dialog mirrors
+   #player/.p-box's own <dialog>/::backdrop pattern (reuses the existing @keyframes pop). */
+.inbox{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:116px;z-index:40;width:42px;height:42px;border-radius:50%;
+ border:1.5px solid var(--head);background:var(--theme-bg);color:var(--head);cursor:pointer}
+.inbox::before{content:"\2709";font-size:1.15rem;line-height:1}
+.inbox:hover{background:rgba(var(--sh),.15)}
+.inbox-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 3px;box-sizing:border-box;border-radius:50%;
+ font-size:.7rem;font-weight:700;line-height:16px;text-align:center;color:var(--tab-on-ink);background:var(--accent)}
+.inbox-view{width:min(420px,90vw);padding:0;border:0;background:transparent;color:var(--ink)}
+.inbox-view::backdrop{background:var(--backdrop);backdrop-filter:blur(3px)}
+.inbox-view[open]{animation:pop .35s cubic-bezier(.2,.8,.3,1)}
+.inbox-box{position:relative;padding:14px 14px 16px;border-radius:8px;background:var(--paper);box-shadow:0 30px 60px -20px rgba(var(--sh),.7)}
+.inbox-box :focus-visible{--ring:var(--ring-paper)}
+#inbox-title{margin:0;font:400 clamp(1.6rem,3vw,2.1rem)/1.1 'Pinyon Script',Georgia,serif;color:var(--btn)}
+#inbox-text{margin:.5rem 0 0;font-style:italic;font-weight:500;font-size:1.1rem;line-height:1.4;color:var(--ink);white-space:pre-wrap}
+.inbox-close{position:absolute;top:-16px;right:-16px;z-index:1;width:42px;height:42px;border-radius:50%;border:0;cursor:pointer;
+ font-size:1.6rem;line-height:1;color:var(--btn-text);background:var(--btn);box-shadow:0 4px 12px rgba(var(--sh),.5)}
+.inbox-close:hover{filter:brightness(1.25)}
+
+/* Phase 3 P7: reply submit folds the letter up toward the inbox icon (fixed top-right) and
+   fades it out - same transition/easing convention as .scene.rise .letter's own transform
+   transition above, not a new animation language. #letter.folding (ID + class, not just
+   .folding) is needed so this beats .scene.read .letter's own transform rule in the cascade,
+   which otherwise wins on specificity alone. The end state (opacity:0, pointer-events:none) is
+   correct standing still, with no transition at all - required since the global
+   prefers-reduced-motion rule above forces every transition here to .01ms; there's no
+   mid-fold visual this depends on. script.js hides #letter's content behind #stage afterwards
+   the same way .scene.gone already does (triggered via the existing #go click, not duplicated). */
+#letter.folding{transition:transform .65s cubic-bezier(.3,.7,.2,1),opacity .55s ease;
+ transform:translateX(-50%) translate(42vw,-46vh) scale(.05) rotate(8deg);opacity:0;pointer-events:none}
