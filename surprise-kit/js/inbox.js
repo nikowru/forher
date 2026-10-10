@@ -17,17 +17,22 @@
   emptyEl.textContent = CONFIG.reply.inboxEmpty;
 
   // ---- her saved reply: textContent only (untrusted); CSS white-space:pre-wrap keeps her line breaks ----
-  const saved = Store.getJSON(KEYS.reply, null);
-  const text = saved && typeof saved === "object" && typeof saved.text === "string" ? saved.text : "";
-  if (text.trim()) {
-    replyEl.textContent = text;
-    const d = new Date(saved.timestamp); // millisecond timestamp from Date.now()
-    if (typeof saved.timestamp === "number" && !isNaN(d)) {
-      whenEl.textContent = d.toLocaleString(undefined, { dateStyle: "long", timeStyle: "short" });
+  // From the api (Api.getProfile); if that cannot answer (no session on this device, api.js missing) the device's own
+  // copy is used, so she never sees an empty inbox just because the lookup failed.
+  function paint(saved) {
+    const text = saved && typeof saved === "object" && typeof saved.text === "string" ? saved.text : "";
+    if (text.trim()) {
+      replyEl.textContent = text;
+      const d = new Date(saved.timestamp); // millisecond timestamp from Date.now()
+      if (typeof saved.timestamp === "number" && !isNaN(d)) {
+        whenEl.textContent = d.toLocaleString(undefined, { dateStyle: "long", timeStyle: "short" });
+      }
+    } else {
+      emptyEl.hidden = false; // #inbox-reply / #inbox-when stay empty (the CSS hides them when :empty)
     }
-  } else {
-    emptyEl.hidden = false; // #inbox-reply / #inbox-when stay empty (the CSS hides them when :empty)
   }
+  const local = () => Store.getJSON(KEYS.reply, null);
+  (S.Api ? S.Api.getProfile() : Promise.resolve({ ok: false })).then(r => (r && r.ok && r.profile && r.profile.reply) || local(), local).then(paint);
 
   heading.focus({ preventScroll: true });
 })();

@@ -222,13 +222,22 @@
       return fetch("clips.json").then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
     }
 
-    // Try the Memories CSV first; any failure (blank URL, network/HTTP error, or a CSV that
-    // doesn't parse into usable rows) falls back to clips.json, completely unchanged from how
-    // it loaded before this task - same checkClips hygiene, same final .catch/error message.
+    // The api is the one door for data (Phase B swaps its driver). Order: the Memories CSV if a URL is set, then
+    // Api.getMemories() (the local driver serves clips.json), then a direct clips.json read as the last resort.
+    // Any failure falls through to the next, with the same checkClips hygiene and the same final .catch/error message.
+    function loadFromApi() {
+      if (!S.Api) return Promise.reject(new Error("api.js not loaded"));
+      return S.Api.getMemories().then(r => {
+        if (!r || !r.ok || !Array.isArray(r.clips) || !r.clips.length) throw new Error("api: " + (r && r.error || "no clips"));
+        const data = { collections: r.collections || [], clips: r.clips };
+        checkClips(data, r.source || "api"); return data;
+      });
+    }
     loadMemoriesCSV()
       .then(data => { checkClips(data, "Memories CSV"); return data; })
+      .catch(() => loadFromApi())
       .catch(err => {
-        console.warn("surprise-kit: Memories CSV unavailable, falling back to clips.json", err);
+        console.warn("surprise-kit: memories api unavailable, falling back to clips.json", err);
         return loadClipsJSON().then(data => { checkClips(data); return data; });
       })
       .then(data => { clips = data.clips || []; buildTabs(data.collections || []); showTab("all"); })

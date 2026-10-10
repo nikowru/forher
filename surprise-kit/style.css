@@ -363,19 +363,52 @@ html:has(.player[open]){overflow:hidden}
 /* L1 dim decision: the overlay is position:fixed over the WHOLE viewport, so the header, footer, atmosphere
    and page background all dim together ("dimmed background"), and removing .intro-dim lights the whole page
    back up. The foreground (heading, envelope scene, hint, memories button) is lifted above the overlay
-   (z-index 32; .intro-msg is 33) so the envelope stays lit like a spotlight and text keeps its normal
+   (z-index 32; the notification is 40) so the envelope stays lit like a spotlight and text keeps its normal
    contrast. Dimmed chrome stays clickable: the overlay has pointer-events:none. */
 #stage>h1,#stage>.hint,#stage>.scene{position:relative;z-index:32}
 #stage.intro-pre .scene{opacity:0;transform:translateY(-70vh)}
 #stage.intro-pre .flowers{opacity:0;transform:translateY(26px) scale(.8)}
 #stage.intro-pre .book{opacity:0;transform:translateY(26px) scale(.8)}
-.intro-msg{position:absolute;top:6%;left:50%;transform:translate(-50%,-10px);margin:0;max-width:86vw;text-align:center;
- font:italic 600 clamp(1.5rem,4.2vw,2.3rem)/1.3 'Cormorant Garamond',Georgia,serif;color:var(--head);
- /* sits over the intro dim overlay, where --head direct on --bg falls short of 4.5:1 (QA P11);
-    the same paper-label treatment already used for .hint/.g-sub on teal fixes it here too */
- padding:.15em 1em;border-radius:4px;background:var(--label);box-shadow:var(--label-sh);
- text-shadow:0 2px 12px rgba(var(--sh),.28);opacity:0;pointer-events:none;z-index:33;transition:opacity .9s ease,transform .9s ease}
-#stage.intro-msg-on .intro-msg{opacity:1;transform:translate(-50%,0)}
+/* PA13: the falling letter. #stage.intro-pre is still the "not yet entered" start state (js/letter.js removes it on the
+   second frame). The frame it goes, the three animations below start, but ONLY while the dim is on and intro-pre is off,
+   so a returning visitor (no intro-dim) and the page after the light-up never replay it. "backwards" fill, never
+   "forwards": once finished the plain styles are the resting look, so .scene.gone's opacity:0 still wins afterwards.
+   The scene drops from above the viewport (ease-in = gravity), hits at 38% (~0.76s), then settles in decreasing hops
+   while rocking about its bottom edge (the sway). The flowers and book unfold from the moment of impact (0.7s delay). */
+#stage.intro-dim:not(.intro-pre) .scene{transform-origin:50% 90%;animation:letter-fall 2s backwards}
+#stage.intro-dim:not(.intro-pre) .flowers{animation:decor-flowers 1.1s cubic-bezier(.3,.8,.3,1) .7s backwards}
+#stage.intro-dim:not(.intro-pre) .book{animation:decor-book 1.1s cubic-bezier(.3,.8,.3,1) .8s backwards}
+@keyframes letter-fall{
+ 0%{opacity:0;transform:translateY(-108vh) rotate(-7deg);animation-timing-function:cubic-bezier(.55,0,.9,.55)}
+ 4%{opacity:1}
+ 38%{opacity:1;transform:translateY(0) rotate(3deg) scaleY(.97);animation-timing-function:cubic-bezier(.2,.6,.4,1)}
+ 55%{transform:translateY(-6.5vh) rotate(-2.2deg) scaleY(1);animation-timing-function:cubic-bezier(.6,0,.9,.6)}
+ 68%{transform:translateY(0) rotate(1.5deg) scaleY(.99);animation-timing-function:cubic-bezier(.2,.6,.4,1)}
+ 79%{transform:translateY(-1.8vh) rotate(-.8deg) scaleY(1);animation-timing-function:cubic-bezier(.6,0,.9,.6)}
+ 89%{transform:translateY(0) rotate(.4deg);animation-timing-function:ease-out}
+ 100%{opacity:1;transform:translateY(0) rotate(0)}}
+@keyframes decor-flowers{
+ from{opacity:0;transform:translateY(26px) scale(.8) rotate(-8deg)}
+ 60%{opacity:1;transform:translateY(-4px) scale(1.04) rotate(2deg)}}
+@keyframes decor-book{
+ from{opacity:0;transform:translateY(26px) scale(.8) rotate(9deg)}
+ 60%{opacity:1;transform:translateY(-4px) scale(1.04) rotate(9deg)}}
+
+/* PA14: phone-style notification. #notif is a status region (hidden by default, NO display rule so [hidden] wins);
+   inside it one real <button> is the dismiss control. It lives at z-index 40, above the dim (31) and the lifted scene (32).
+   js toggles .is-in: hidden=false, then .is-in next frame to slide in; remove .is-in to slide out, hidden=true after.
+   Paper card + ink text keeps full contrast over the dimmed page in both themes (the dim never covers it). */
+.notif{position:fixed;top:70px;left:50%;z-index:40;width:max-content;max-width:min(92vw,26rem);
+ transform:translate(-50%,calc(-100% - 90px));opacity:0;transition:transform .55s cubic-bezier(.22,.9,.3,1),opacity .35s ease}
+.notif.is-in{transform:translate(-50%,0);opacity:1}
+.notif-btn{display:flex;align-items:center;gap:.8rem;width:100%;margin:0;padding:.7rem 1.1rem .7rem .8rem;border:1px solid var(--env-edge);border-radius:1.1rem;
+ font:600 1rem/1.3 'Quicksand',system-ui,sans-serif;text-align:left;color:var(--ink);background:var(--paper);cursor:pointer;
+ box-shadow:0 14px 30px -8px rgba(var(--sh),.6),0 3px 8px rgba(var(--sh),.28)}
+.notif-btn:hover{filter:brightness(.97)}
+.notif-btn:focus-visible{--ring:var(--ring-paper);outline-offset:-6px}
+.notif-ico{flex:none;display:grid;place-items:center;width:2.3rem;height:2.3rem;border-radius:.7rem;color:var(--btn-text);background:var(--btn)}
+.notif-ico svg{width:1.4rem;height:1.4rem;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+@media (prefers-reduced-motion:reduce){.notif{transform:translate(-50%,0)}}
 /* reduced motion: the global rule near the top of this file already forces every transition
    above to .01ms, so .intro-pre's offset/opacity-0 start state just snaps straight to the
    normal resting look (opacity 1, no transform) the instant script.js removes the class -

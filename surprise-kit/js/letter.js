@@ -5,7 +5,7 @@
 (function () {
   const S = window.Surprise;
   if (!S || !S.Store || !S.Guard) return;
-  const { Store, Progress, Send, Inbox, CONFIG, KEYS } = S;
+  const { Store, Progress, CONFIG, KEYS } = S;
   const $ = id => document.getElementById(id);
   const stage = $("stage"), scene = $("scene"), seal = $("seal"), letter = $("letter"), text = $("text");
   if (!stage || !scene || !seal || !letter || !text || !$("reply-form")) return;
@@ -16,7 +16,6 @@
 
   // ---- wording (all from CONFIG) ----
   document.title = CONFIG.site.titles.letter;
-  $("intro-msg").textContent = CONFIG.intro.heading;
   $("title").textContent = CONFIG.heading;
   $("hint").textContent = CONFIG.hint;
   seal.setAttribute("aria-label", CONFIG.labels.seal);
@@ -55,13 +54,47 @@
     return;
   }
 
-  // ---- intro: dim the page, show the heading, let the envelope drop in, then focus the seal ----
-  stage.classList.add("intro-dim", "intro-msg-on", "intro-pre");
+  // ---- intro: dim the page, let the letter fall and the decorations unfold (pure CSS, see #stage.intro-dim:not(.intro-pre)),
+  // slide the notification in once that has landed, then focus the seal ----
+  stage.classList.add("intro-dim", "intro-pre");
   // two rAFs so the pre-entrance state is painted at least once; otherwise the removal could be coalesced into the
-  // same frame and the entrance transition would never run
+  // same frame and the entrance animation would never run
   requestAnimationFrame(() => requestAnimationFrame(() => stage.classList.remove("intro-pre")));
-  setTimeout(() => stage.classList.remove("intro-msg-on"), 1100); // heading fades as the unfold finishes
   setTimeout(() => seal.focus({ preventScroll: true }), 2200);
+
+  // ---- notification (#notif): show = text, hidden=false, .is-in next frame; dismiss = remove .is-in, hidden=true after the slide ----
+  const N = CONFIG.notify, notif = $("notif"), notifBtn = $("notif-btn"), notifText = $("notif-text");
+  let notifState = "idle", notifTimer = 0; // idle -> shown -> gone
+  function dismissNotif() {
+    if (notifState !== "shown") return; // already dismissing/dismissed (or never shown): a second call does nothing
+    notifState = "gone";
+    clearTimeout(notifTimer); // a manual dismiss cancels the auto-dismiss
+    notif.classList.remove("is-in");
+    // hide after the 0.55s slide; a timer, not transitionend, so it also works when reduced motion skips the transition
+    setTimeout(() => { notif.hidden = true; }, reduceMotion.matches ? 0 : 600);
+  }
+  function playNotifSound() {
+    // blank path = no request at all. Muted = silent. Any failure (missing file, autoplay block) is swallowed.
+    if (!N.sound || (S.Music && S.Music.isMuted())) return;
+    try {
+      const a = new Audio(N.sound);
+      a.volume = Math.max(0, Math.min(1, +N.volume || 0.4));
+      a.addEventListener("error", () => {});
+      const p = a.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    } catch (e) { /* silent */ }
+  }
+  function showNotif() {
+    if (!notif || !notifBtn || !notifText || notifState !== "idle") return;
+    notifState = "shown";
+    notifText.textContent = N.text; // filled at show time so the live region announces it
+    notif.hidden = false;
+    requestAnimationFrame(() => requestAnimationFrame(() => { if (notifState === "shown") notif.classList.add("is-in"); }));
+    notifTimer = setTimeout(dismissNotif, N.durationMs);
+    playNotifSound();
+  }
+  if (notifBtn) notifBtn.addEventListener("click", dismissNotif);
+  setTimeout(showNotif, N.delayMs);
 
   // ---- seal -> letter ----
   let opened = false;
@@ -80,7 +113,7 @@
     }, 2500);
   });
 
-  // ---- reply: soft confirm, save, send, fold, light up, reveal the link to memories ----
+  // ---- reply: soft confirm, save, fold, light up, reveal the link to memories ----
   let replyAttempted = false, replyDone = false;
   $("reply-form").addEventListener("submit", e => {
     e.preventDefault();
@@ -100,10 +133,12 @@
     replyAttempted = true; replyDone = true;
 
     Store.remove(KEYS.inboxSeen); // this reply is unread until she opens the inbox page
+    // local copy first (guards, the unread badge and the returning-visitor view read it), then the api (the account's copy)
     Store.setJSON(KEYS.reply, { text: replyText, timestamp: Date.now() });
     Progress.unlock("memories"); Progress.unlock("inbox");
-    const su = Store.getJSON(KEYS.signup, null);
-    Send.send({ type: "reply", username: su && su.username ? su.username : "", reply: replyText, website });
+    if (S.Api && !website) { // honeypot filled = a bot: the page flow runs as normal but nothing is sent
+      S.Api.saveReply(replyText).then(() => S.Api.saveProgress(Progress.read()));
+    }
 
     letter.classList.add("folding"); // CSS shrinks it toward the header inbox icon
     setTimeout(() => {

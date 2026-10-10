@@ -170,9 +170,15 @@ const CONFIG = {
       no: "Keep me here"
     }
   },
-  // intro / dim-and-unfold beat (Phase 3 P5), shown once right after a first-time sign-up
-  intro: {
-    heading: "uy may love note!"
+  // phone-style notification on the letter page (js/letter.js), shown once during the first-time intro
+  notify: {
+    text: "uy may love note!",
+    delayMs: 2000,       // after the page opens: the letter has landed (2s fall) and the decorations have unfolded
+    durationMs: 4500,    // shown this long, then it dismisses itself (clicking it dismisses sooner)
+    // OPTIONAL sound, played quietly with the notification. Blank = nothing is requested, nothing plays (no 404).
+    // To use one: drop a file in /assets (for example assets/notify.mp3) and put that path here. A missing or blocked file stays silent.
+    sound: "",
+    volume: 0.4          // [0-1]
   },
   // letter reply + inbox wording (Phase 3 P6); edit freely, same CONFIG convention
   reply: {

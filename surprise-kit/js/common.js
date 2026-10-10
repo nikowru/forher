@@ -174,35 +174,6 @@
     paint();
   }
 
-  // ---- backend send queue: used by the sign-up and letter pages ----
-  // text/plain + no-cors (Apps Script web apps don't handle a CORS preflight); the response is opaque,
-  // so a rejected promise is the only failure signal. Failures are queued and never shown to her.
-  const Send = {
-    queue(payload) {
-      const q = Store.getJSON(KEYS.pending, []);
-      if (!Array.isArray(q)) return;
-      q.push(payload);
-      Store.setJSON(KEYS.pending, q);
-    },
-    send(payload) {
-      if (!S.APPS_SCRIPT_URL) { Send.queue(payload); return; } // nothing deployed yet (see backend/SETUP.md)
-      try {
-        fetch(S.APPS_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload) })
-          .catch(err => { console.warn("surprise-kit: send failed, queued for retry", err); Send.queue(payload); });
-      } catch (err) { console.warn("surprise-kit: send failed, queued for retry", err); Send.queue(payload); }
-    },
-    flush() {
-      if (!S.APPS_SCRIPT_URL) return;
-      const queue = Store.getJSON(KEYS.pending, []);
-      if (!Array.isArray(queue) || !queue.length) return;
-      Store.remove(KEYS.pending);
-      queue.forEach(Send.send); // any that fail again just re-queue themselves
-    }
-  };
-  S.Send = Send;
-  Send.flush();
-  setTimeout(Send.flush, 20000); // one more quiet retry a little later; no need for backoff here
-
   // ---- music: one <audio> per page, resumed from the saved position after each navigation ----
   // A real page change destroys the element, so every page re-creates it and seeks to the saved time
   // (a short audible gap is unavoidable). Saved record: { id, time, muted, ts } under KEYS.music;
