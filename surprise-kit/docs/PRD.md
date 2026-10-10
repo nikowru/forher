@@ -6,7 +6,8 @@ A private, one-page website for one viewer (my girlfriend) on her laptop. She cl
 ## 2. Goals and non-goals
 Goals: feel warm, handmade and vintage; work first time on reveal day; easy for me to add or edit clips and wording without touching the design.
 Non-goals: accounts or logins, comments, public sharing, phone layout, analytics, monetization.
-**Phase 3 exception (approved 2026-10-09):** "accounts or logins" and "comments" are no longer non-goals for the one-time sign-up card and the letter-reply flow in section 4.2. These stay small on purpose: the sign-up is a local, single-viewer profile saved to her browser's localStorage (no server auth, no multi-user accounts, no password), and the letter reply is one private message back to me (not a public comment thread). Public sharing, analytics and monetization are still non-goals and nothing here changes that. "Phone layout" also remains a non-goal per Decision D below, except the sign-up card itself (4.2), which is explicitly mobile-friendly at my request; every other screen stays desktop-first.
+**Phase 3 exception (approved 2026-10-09):** "accounts or logins" and "comments" are no longer non-goals for the one-time sign-up card and the letter-reply flow in section 4.2. These stay small on purpose: the sign-up is a local, single-viewer profile saved to her browser's localStorage (no server auth, no multi-user accounts, no password), and the letter reply is one private message back to me (not a public comment thread). **Phase 5 exception (APPROVED 2026-10-10):** the "local, single-viewer profile ... no server auth ... no password" limit above is relaxed. There is still exactly ONE account, but it gets a "secret word only we know" (a lightweight password) and, in Phase B, is checked on a small server (section 4.6). Still not goals: multi-user accounts, sign-up for anyone else, comments, public sharing.
+Public sharing, analytics and monetization are still non-goals and nothing here changes that. "Phone layout" also remains a non-goal per Decision D below, except the sign-up card itself (4.2), which is explicitly mobile-friendly at my request; every other screen stays desktop-first.
 
 ## 3. Audience and context
 One viewer, a laptop (16:9), latest Chrome or Edge, opened once as a surprise and maybe revisited. Needs internet.
@@ -51,6 +52,7 @@ Rules:
 - The red wax seal stays red in both themes unless I decide otherwise (open question).
 
 ### 4.2 Phase 3: sign-up, intro, letter reply (new, approved 2026-10-09)
+> PARTLY SUPERSEDED by section 4.5 (APPROVED 2026-10-10): the "Will you be my baby forever?" Yes/No moves off the sign-up card onto its own page, `proposal.html`; the "uy may love note!" top heading becomes a notification; sign-up gains a secret-word field. The reply step, fold-to-inbox and light-up in this section are unchanged.
 Adds a one-time sign-up step before Scene 1, and replaces the old "Continue" click with a letter-reply step that lights the page back up into the inventory. Scene 1's seal/flap/letter interaction and Scene 2/3 (inventory + player) are not redesigned, only retimed/re-triggered as noted below.
 
 **Flow:** 0. Sign-up (first visit only) -> 1. Intro / dim-and-unfold -> 2. Scene 1 letter (unchanged) -> 3. Letter reply + inbox -> 4. Light-up + inventory reveal (existing Scene 2/3, unchanged content).
@@ -84,6 +86,7 @@ Adds a one-time sign-up step before Scene 1, and replaces the old "Continue" cli
 - Process: Decision E already lets me pre-approve a batch of tasks instead of one-at-a-time review; Phase 3 is planned as one such batch, but tasks stay small (45 minutes or less) so I can still review individually if I choose to.
 
 ### 4.3 Data backend: Google Sheets + Apps Script (settled 2026-10-09)
+> SUPERSEDED for Phase B by section 4.6 (APPROVED 2026-10-10, reverses board Decision I). This section describes the write-only script that is in the repo today and stays true until Phase B ships. Specifically retired by 4.6: "never returns stored rows" / "no read path of any kind", the "Responses" tab, the published-CSV Memories fetch and `MEMORIES_CSV_URL`, and the `no-cors` fire-and-forget send (login needs a readable response).
 Settles what was open in section 12 about where the letter reply goes, and becomes the phase-2 data store for both the sign-up/reply answers and the memories inventory (replacing the Supabase idea in section 7). One Apps Script web app, backed by one private Google Sheet in my own Drive, handles both directions; the Apps Script source lives in the repo under /backend (or /docs) - not in script.js, since it runs on Google's servers, not in her browser.
 
 **Writing: sign-up + letter reply -> Sheet, "Responses" tab**
@@ -108,6 +111,28 @@ Turns the one-page experience into an "official" multi-page site with the same s
 - Music: saved track/time/muted resume at about 15% volume on the next page, with a small "tap to resume music" header button when the browser blocks autoplay. A page change always causes a brief audible gap; truly gapless playback is not possible without single-page navigation.
 - Layout: laptop-first (tested at 1366x768, 1440x900, 1920x1080); below about 900px pages stack to one column and nothing more.
 - Data backend (section 4.3) and the Phase 3 behaviours are unchanged.
+- **Phase 5 changes (APPROVED 2026-10-10):** two more pages, `proposal.html` and `login.html`, so the order is `index.html` (sign-up, or login if an account exists) -> `proposal.html` -> `letter.html` -> `memories.html` (+ `inbox.html`). New files `js/proposal.js`, `js/login.js`, `js/nodge.js` (the No-button physics moved out of `signup.js`), `js/api.js` (all storage/backend calls). The header/nav is hidden on index, login and proposal (only the theme toggle and mute button show). Progress adds `proposal` and an `accepted` flag: proposal after sign-up/login; letter after `accepted`; memories + inbox after the reply. See 4.5.
+
+### 4.5 Phase 5: sign-up, login, proposal, falling letter (APPROVED 2026-10-10; built in Phase A on localStorage, then Phase B moves it to the server)
+Laptop-first (1366x768, 1440x900, 1920x1080); below about 900px pages stack to one column. Same fonts and the same two palettes (CSS variables only; the red wax seal is the one exception). Every animation has a `prefers-reduced-motion` alternative; focus states and contrast hold in both themes. No invented personal content: letter, icons, music, clips and the notification sound stay placeholders.
+
+**Sign-up (`index.html`)**: the "Will you be my baby forever?" question and Yes/No buttons are removed. Fields: username (placeholder "baby ko"), five mood emoji, icon, music, and a new "a secret word only we know" field with a small editable hint (CONFIG). "Continue" validates gently (a sweet message pointing at the first missing field), saves her answers, starts the chosen music and fades to `proposal.html`. If an account already exists, `index.html` shows the login instead of the sign-up (Phase A: simulated in localStorage; Phase B: asked of the server, so it also works on a new device or private window). Only one account can exist; once it does, sign-up is refused for everyone.
+
+**Login (`login.html`)**: same card style, "welcome back" in the script font, username + secret word, "Continue". A wrong guess gets a sweet message. A small "not me / start fresh" link asks for confirmation; in Phase B it clears only this device's saved session, never the server account. After a successful login: load her saved profile and progress, resume her chosen music, go to the last page she unlocked (the furthest of proposal, letter, memories).
+
+**Proposal (`proposal.html`)**: full-screen, centred. A dimmed, shaded version of the current theme background (derived from existing tokens, no new colors), a soft glow behind the text, slow floating petals/hearts in palette colors. Lines reveal slowly, one by one, large in the script font (Dancing Script): "hi baby," then a beat, then "will you be my baby forever?". The exact wording and timing sit in one CONFIG value, with a flag to use her saved username instead of "baby" (default off). Then the buttons appear: a big Yes with a gentle pulsing glow and the dodging No. No starts still beside Yes, visible in both themes; it dodges only when the pointer comes within about 90-110px, with smooth curved glides (about 300-500 ms, steps of about 120-220px, no jitter), always fully inside the viewport, never over Yes or any other element, never catchable by the pointer; keyboard focus moves it smoothly; reduced motion uses a simple smooth fade to a nearby spot. After several dodges No shrinks a little, Yes grows slightly and a cheeky line ("are you sure, baby?", editable) appears. Tunables sit in the CONFIG file with comments. On Yes: a short celebration (hearts/petals bursting from the button), the text becomes a sweet confirmation line (editable), then a fade into `letter.html`; `accepted = true` is saved. Guards: `proposal.html` needs a finished sign-up; `letter.html` needs `accepted`.
+
+**Letter (`letter.html`)**: the page stays dimmed. The envelope/letter falls from the top with a natural bounce and a slight sway as it settles, and the flowers, notes and decorations unfold around it. Then a phone-style notification slides in from the top ("uy may love note!", editable) with a small envelope icon and disappears after a few seconds or when clicked; an optional notification sound uses a placeholder path under /assets and is silent if the file is missing. After that the seal, letter pop-up, reply lines, "submit sa baby ko", fold into the inbox, light-up and memories reveal work as they do today (section 4.2).
+
+**General**: music keeps resuming across pages (track, playback time and mute state saved; if autoplay is blocked, a small "tap to resume music" button). `?reset=1` keeps working from any page, and so does a `#reset` URL hash (the hash survives a dev server that strips the query).
+
+### 4.6 Data backend v2: Google Sheets + Apps Script with accounts (APPROVED 2026-10-10; Phase B; reverses board Decision I)
+One Apps Script web app (`backend/Code.gs`) attached to a Sheet the user creates blank. `setup()` creates the tabs and header rows. **This deliberately adds a read path** that section 4.3 forbade: her profile and reply can be read back, but only with a valid session token.
+- **Actions** (POST, `text/plain` body so no CORS preflight; anything else is ignored): `status` (does an account exist?), `signup` (refused if an account exists), `login`, `saveProgress`, `saveReply`, `getProfile`, `getMemories`. Inputs are validated and length-limited.
+- **Secret word**: stored only as a salted hash; the salt lives in Script Properties, never in the code, the Sheet or the repo. A lockout follows several wrong attempts in a row. A successful login returns a random session token; only its hash and an expiry are stored. `saveProgress`, `saveReply` and `getProfile` require a valid token; no hash or personal data is ever returned without one. `getMemories` needs no login and returns only the Memories tab.
+- **Site side**: one client module `js/api.js` with one config value for the Web app URL; `fetch` POST, redirect handling, safe JSON parse; the token lives in localStorage on that device and is cleared on logout. A failed request shows a gentle message, keeps what she typed, retries quietly and never shows a raw error; a small loading state covers the slow first request. Her answers, `accepted`, reply and unlocked pages follow her to any device. If the URL is blank, the local (Phase A) driver is used for development.
+- **Sheet tabs**: `Account` (username, secret hash, mood, icon, music, accepted, unlocked pages, reply, reply time, created time) and `Memories` (title, note, date, youtubeId, collection, order). The old `Responses` tab and the published-CSV step are retired.
+- **Honest limits (also stated in docs/backend-setup.md)**: this protects only as much as a username plus a short secret word can. The Web app URL is visible in the site's source. Apps Script offers fast SHA-256 only, so a short word hashed once is weak against offline guessing if someone obtains both the Sheet and the salt; keeping the salt in Script Properties means a leaked Sheet alone is not enough, but anyone with access to the Google account sees everything, including her reply. The lockout is global (one account), so a stranger with the URL could briefly lock her out. `getMemories` is public. This is proportionate for one private surprise and is not strong authentication.
 
 ## 5. Functional requirements
 | ID | Requirement |
@@ -143,9 +168,10 @@ Turns the one-page experience into an "official" multi-page site with the same s
 ```
 Rules: id unique; youtubeId is 11 characters; date is ISO; every clip has a collection that exists.
 
-The "Memories" Sheet tab (published as CSV, fetched by the site per 4.3) carries the same fields under one header row: `title, note, date, youtubeId, collection` (`note` = clips.json's `caption`; the row's position stands in for `id`; collections are implied by the `collection` column, not a separate list). If the CSV can't be fetched, the site uses the clips.json placeholders instead - same rules apply to both.
+The "Memories" Sheet tab (published as CSV, fetched by the site per 4.3) carries the same fields under one header row: `title, note, date, youtubeId, collection` (PROPOSED Phase 5 adds an `order` column, section 4.6; `note` = clips.json's `caption`; the row's position stands in for `id`; collections are implied by the `collection` column, not a separate list). If the CSV can't be fetched, the site uses the clips.json placeholders instead - same rules apply to both.
 
 ### 6.2 Responses: sign-up + letter reply (Sheet tab "Responses", section 4.3)
+> SUPERSEDED in Phase B (PROPOSED): replaced by the single-row "Account" tab in section 4.6 (username, secret hash, mood, icon, music, accepted, unlocked pages, reply, reply time, created time). Remains true of the current code until Phase B ships.
 One row per write, appended by the Apps Script `doPost`, each with a server-side timestamp:
 - Sign-up row: `timestamp, type="signup", username, mood, iconId, musicId, yes=true`.
 - Reply row: `timestamp, type="reply", username, reply` (reply text, after the honeypot and length-cap checks).
@@ -156,7 +182,7 @@ The sheet never exposes these rows back to the site - they are read only by me, 
 |---|---|---|
 | Frontend | Plain HTML, CSS, JavaScript, no build step; multi-page with classic shared scripts (section 4.4, proposed) | Nothing to break on reveal day; easy to edit; works from a folder |
 | Data (phase 1, fallback) | clips.json in the repo | 100 to 500 clips is tiny; loads instantly; no server; used if the CSV fetch below fails |
-| Data (phase 2, settled 2026-10-09) | Google Sheets (private, in my own Drive) + one Google Apps Script web app: `doPost` appends sign-up/reply rows to a "Responses" tab (write-only, never serves them back); a "Memories" tab is published as CSV and fetched by the site for clips (section 4.3, section 6) | Free, no server to host; I can add clips from my phone without redeploying; replies stay private since the script can't be asked to return them; replaces the earlier Supabase idea and the three delivery options once listed in section 12 |
+| Data (phase 2, settled 2026-10-09; Phase 5 Phase B PROPOSED to replace the write-only Responses design with the accounts design in section 4.6, adding reads behind a session token) | Google Sheets (private, in my own Drive) + one Google Apps Script web app: `doPost` appends sign-up/reply rows to a "Responses" tab (write-only, never serves them back); a "Memories" tab is published as CSV and fetched by the site for clips (section 4.3, section 6) | Free, no server to host; I can add clips from my phone without redeploying; replies stay private since the script can't be asked to return them; replaces the earlier Supabase idea and the three delivery options once listed in section 12 |
 | Video | Unlisted YouTube, embedded with the IFrame Player API on youtube-nocookie.com | Free, handles large or long clips |
 | Thumbnails | img.youtube.com/vi/{id}/hqdefault.jpg | No images to make by hand |
 | Repo | GitHub, private | Nobody sees clips.json or the Apps Script URL early |
@@ -168,7 +194,7 @@ Why no database first (phase 1): a JSON file is faster, free and cannot go down.
 ## 8. Non-functional requirements
 - Performance: lazy thumbnails, player loads on click, first paint under 2 seconds on wifi.
 - Accessibility: body text contrast of at least 4.5:1 (use --ink), keyboard focus visible, Esc closes the modal, reduced motion respected.
-- Privacy: unlisted videos, private repo, `noindex` meta tag and robots.txt, link shared with nobody else. Unlisted is obscurity, not security.
+- Privacy (PROPOSED Phase 5 note: the web app can now return her profile/reply to a valid session, and the Memories list to anyone with the URL; see 4.6): unlisted videos, private repo, `noindex` meta tag and robots.txt, link shared with nobody else. Unlisted is obscurity, not security.
 - Reliability: works offline-tolerant messages; fallback when YouTube is blocked.
 - Browsers: latest Chrome and Edge; test in the browser she actually uses.
 
@@ -196,6 +222,9 @@ Why no database first (phase 1): a JSON file is faster, free and cannot go down.
 - Bad wifi on reveal day: test beforehand, keep a backup on a phone hotspot.
 - Apps Script web app (section 4.3) can respond slowly on its first request after sitting idle, and has daily quotas: test beforehand; redeploy as a "new version" (not a "new deployment") so script.js's config URL doesn't need updating, and nothing she does ever shows an error either way (failed sends just retry later from localStorage).
 
+- (PROPOSED Phase 5) The Web app URL is visible in the site source; a short secret word hashed with fast SHA-256 is weak against offline guessing if the Sheet and salt both leak; a stranger could trigger the global lockout. Accepted as proportionate for one private surprise (section 4.6).
+- (PROPOSED Phase 5) Moving the No-button physics to proposal.html could regress a heavily tuned interaction: move first, retune second, re-run the measured checks.
+
 ## 12. Open questions
 - Exact Canva heading font name.
 - Fifth swatch of the Minimal Neutral palette (hidden in the screenshot).
@@ -205,5 +234,6 @@ Why no database first (phase 1): a JSON file is faster, free and cannot go down.
 - Number of clips and how to group them.
 - Deployment target: Cloudflare Pages, Netlify or Vercel.
 - Phase 3 - real files for /assets/icons/ and /assets/music/ are placeholders until I supply them.
+- (Phase 5, SETTLED 2026-10-10) Decision I reversal approved; secret word trimmed + lowercased; proposal/notification wording and No tunables live in js/config.js; backend/SETUP.md and the Responses tab retire with Phase B; the old test profile is wiped once on first load of the new build; No keeps its continuous physics, retuned rather than rebuilt as hops; lockout is 5 wrong tries then ~5 minutes. Still open: a real notification-sound file (placeholder until supplied).
 
 Settled, no longer open (2026-10-09, see section 4.2, 4.3 and docs/board.md Decisions): the letter-reply submit button (always enabled, gentle nudge when empty) and where the letter reply and sign-up answers are delivered (Google Apps Script web app + private Google Sheet, write-only).
