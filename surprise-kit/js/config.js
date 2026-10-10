@@ -37,6 +37,24 @@ const NO_SWAY_AMP = 5;           // [0-10] idle sway size (px); 0 turns idle swa
 const NO_SWAY_PERIOD_MS = 4200;  // [2500-7000] time of one idle sway cycle
 const NO_IDLE_PAUSE_MS = 5000;   // [2000-15000] with no pointer/key activity this long the animation loop stops (saves battery)
 const NO_FADE_MS = 160;          // [100-300] reduced-motion only: fade out, and again fade in, at the new spot
+const NO_PIN_MS = 300;           // [100-500] a pinned (cornered / against Yes) No waits this long with the pointer close before it glides away
+const NO_SHORT_GLIDES = false;   // true = the corner-escape glide is a short hop (NO_STEP_MIN..NO_STEP_MAX) instead of a trip to a far part of the screen
+const NO_STEP_MIN = 200;         // [100-260] smallest hop (px) when No steps to a "nearby" spot (keyboard focus, click/tap dash, reduced-motion fade)
+const NO_STEP_MAX = 290;         // [160-360] largest such hop (px); candidates are tried on two rings, one at each of these distances
+
+// ---- proposal.html "No" retune (js/proposal.js passes these to Nodge as per-page overrides of the NO_* values above) ----
+const PR_NO_RADIUS = 100;        // [90-110] pointer this close (to the button's EDGE) makes No flee; far smaller than the sign-up's 160
+const PR_NO_RADIUS_SPEED = 0.05; // [0-0.4] a fast pointer widens that radius by this x its speed (px/s), so a flick cannot reach it; 0 = always exactly RADIUS
+const PR_NO_RADIUS_BONUS_MAX = 60; // [0-250] cap on that widening (px): the trigger is 100px, up to 160px for a fast pointer
+const PR_NO_GLIDE_MS = 420;      // [300-500] smooth curved glide when No is cornered
+const PR_NO_DASH_MS = 380;       // [300-500] curved dash when a click/tap lands on No
+const PR_NO_STEP_MIN = 120;      // [120-220] hop length for focus / dash / reduced-motion fade: shortest...
+const PR_NO_STEP_MAX = 220;      // [120-220] ...and longest
+const PR_NO_CORNER_TRIGGER = 100; // [60-110] cornered No glides away when the pointer is this close (keep at or under the radius)
+const PR_NO_SHORT_GLIDES = false; // true = corner-escape glide is a 120-220px hop instead of a longer curved trip (tested: hops get caught more often, so off)
+const PR_NO_PIN_MS = 120;        // [80-300] how long a pinned No waits before the corner-escape glide (short, so the pointer cannot close in first)
+const PR_NO_SWAY_AMP = 0;        // [0-5] idle sway (px); 0 = No holds perfectly still between dodges (no jitter)
+const PR_NO_DAMPING = 4.2;       // [2.5-6] higher = No settles sooner after a flee and never wobbles
 
 // ---- Edit all wording here ----
 const CONFIG = {
@@ -57,6 +75,26 @@ const CONFIG = {
     close: "Close", previous: "Previous clip", next: "Next clip",
     unavailable: "This clip can't play here, but you can still watch it on YouTube.",
     openOnYouTube: "Open on YouTube"
+  },
+  // proposal.html question page (js/proposal.js). Wording may contain {name}: it becomes "baby" (nameWord) or, when
+  // useUsername is true, her saved username. Edit the strings freely; keep {name} wherever the pet name belongs.
+  proposal: {
+    title: "A question for you",
+    line1: "hi {name},",
+    line2: "will you be my {name} forever?",
+    cheeky: "are you sure, {name}?",
+    confirm: "I knew you would say yes, {name}.",
+    yes: "Yes",
+    no: "No",
+    useUsername: false,   // false = use nameWord ("baby"); true = use the username she chose at sign-up
+    nameWord: "baby",     // the word {name} stands for while useUsername is false (also the fallback if no username is saved)
+    // timing, in ms (the 1.8s fade of each line itself is in style.css)
+    firstLineDelayMs: 900,   // pause after the page opens before "hi baby,"
+    beatMs: 2400,            // pause between line 1 and line 2
+    buttonsDelayMs: 2800,    // pause after line 2 before Yes / No appear
+    dodgesBeforeCheeky: 4,   // after this many dodges No shrinks, Yes grows and the cheeky line appears (once)
+    yesBeatMs: 2800,         // after Yes: celebration + confirmation shown this long before fading to letter.html
+    yesBeatReducedMs: 900    // the same beat under reduced motion
   },
   // read aloud by screen readers only
   labels: { theme: "Minimal theme", seal: "Open the envelope", collections: "Collections", letter: "Letter" },
@@ -88,6 +126,10 @@ const CONFIG = {
     moodLabel: "Are you happy?",
     iconLabel: "Choose an icon",
     musicLabel: "Choose your music",
+    // the secret word (js/signup.js): she types it here and again on the login page; trimmed + lowercased when compared
+    secretLabel: "A secret word only we know",
+    secretHint: "Something only we would remember. You will need it to come back.",
+    continue: "Continue",
     finalQuestion: "Will you be my baby forever?",
     yes: "Yes",
     no: "No",
@@ -96,7 +138,36 @@ const CONFIG = {
       username: "Tell me what to call you first, please?",
       mood: "Pick how you're feeling first, please?",
       icon: "Choose an icon you like first, please?",
+      secret: "Whisper me our secret word first, please?",
       music: "Pick a song for us first, please?"
+    },
+    // shown in #su-msg when the account could not be created
+    errors: {
+      invalid: "I need your name and our secret word first, please?",
+      network: "Something went wrong on my side. Try once more in a moment?"
+    }
+  },
+  // login page wording (js/login.js); placeholder copy, edit freely
+  login: {
+    title: "Welcome back",
+    usernameLabel: "What should I call you?",
+    secretLabel: "Our secret word",
+    continue: "Continue",
+    reset: "Not me / start fresh",
+    // gentle prompts when Continue is pressed with a field empty (first empty one wins)
+    missing: {
+      username: "Tell me who you are first, please?",
+      secret: "And our secret word, please?"
+    },
+    // ONE message for a wrong username or a wrong word: never say which was wrong
+    wrong: "Hmm, that does not look right. Try again, sweetheart?",
+    network: "Something went wrong on my side. Try once more in a moment?",
+    // "not me" confirmation dialog: forgets only this device, never the saved account
+    confirm: {
+      title: "Not you?",
+      text: "This forgets who this device was signed in as. Nothing you saved is deleted.",
+      yes: "Yes, start fresh",
+      no: "Keep me here"
     }
   },
   // intro / dim-and-unfold beat (Phase 3 P5), shown once right after a first-time sign-up
@@ -151,11 +222,17 @@ Surprise.CONFIG = CONFIG;
 Surprise.MOODS = MOODS;
 Surprise.ICONS = ICONS;
 Surprise.MUSIC = MUSIC;
+Surprise.PR_NO = {
+  RADIUS: PR_NO_RADIUS, RADIUS_SPEED: PR_NO_RADIUS_SPEED, RADIUS_BONUS_MAX: PR_NO_RADIUS_BONUS_MAX, GLIDE_MS: PR_NO_GLIDE_MS,
+  DASH_MS: PR_NO_DASH_MS, STEP_MIN: PR_NO_STEP_MIN, STEP_MAX: PR_NO_STEP_MAX, CORNER_TRIGGER: PR_NO_CORNER_TRIGGER,
+  SWAY_AMP: PR_NO_SWAY_AMP, DAMPING: PR_NO_DAMPING, PIN_MS: PR_NO_PIN_MS, SHORT_GLIDES: PR_NO_SHORT_GLIDES
+};
 Surprise.NO = {
   RADIUS: NO_RADIUS, RADIUS_SPEED: NO_RADIUS_SPEED, RADIUS_BONUS_MAX: NO_RADIUS_BONUS_MAX, LOOKAHEAD_MS: NO_LOOKAHEAD_MS,
   FLEE_ACCEL: NO_FLEE_ACCEL, CURVE: NO_CURVE, POINTER_GAIN: NO_POINTER_GAIN, POINTER_GAIN_MAX: NO_POINTER_GAIN_MAX,
   BASE_SPEED: NO_BASE_SPEED, SPEED_FOLLOW: NO_SPEED_FOLLOW, MAX_SPEED: NO_MAX_SPEED, DAMPING: NO_DAMPING, MARGIN: NO_MARGIN,
   WALL_RANGE: NO_WALL_RANGE, WALL_ACCEL: NO_WALL_ACCEL, WALL_SLIDE: NO_WALL_SLIDE, YES_CLEARANCE: NO_YES_CLEARANCE,
   CORNER_ZONE: NO_CORNER_ZONE, CORNER_TRIGGER: NO_CORNER_TRIGGER, GLIDE_MS: NO_GLIDE_MS, DASH_MS: NO_DASH_MS,
-  TOUCH_SLOP: NO_TOUCH_SLOP, SWAY_AMP: NO_SWAY_AMP, SWAY_PERIOD_MS: NO_SWAY_PERIOD_MS, IDLE_PAUSE_MS: NO_IDLE_PAUSE_MS, FADE_MS: NO_FADE_MS
+  TOUCH_SLOP: NO_TOUCH_SLOP, SWAY_AMP: NO_SWAY_AMP, SWAY_PERIOD_MS: NO_SWAY_PERIOD_MS, IDLE_PAUSE_MS: NO_IDLE_PAUSE_MS, FADE_MS: NO_FADE_MS,
+  STEP_MIN: NO_STEP_MIN, STEP_MAX: NO_STEP_MAX, PIN_MS: NO_PIN_MS, SHORT_GLIDES: NO_SHORT_GLIDES
 };

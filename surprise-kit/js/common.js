@@ -13,38 +13,96 @@
   };
   S.Store = Store;
 
-  // every key the site owns. `theme` is deliberately NOT here: it is a preference, not progress.
-  const KEYS = { signup: "surprise-signup", reply: "surprise-reply", pending: "surprise-pending-sends", muted: "surprise-muted", progress: "surprise-progress", music: "surprise-music", inboxSeen: "surprise-inbox-seen", theme: "theme" };
+  // every key the site owns. `theme` is deliberately NOT in RESET_KEYS: it is a preference, not progress.
+  //   surprise-account  the stand-in for the server's Account row (her profile + secret word + progress copy + reply);
+  //                     written only by js/api.js's local driver, cleared only by a full reset
+  //   surprise-session  this device is logged in: { v:1, token, ts } (in Phase B `token` is the server's session token)
+  //   surprise-schema   data-layout version (SCHEMA); a mismatch wipes the old keys once, see the migration below
+  const KEYS = { signup: "surprise-signup", reply: "surprise-reply", pending: "surprise-pending-sends", muted: "surprise-muted", progress: "surprise-progress", music: "surprise-music", inboxSeen: "surprise-inbox-seen", account: "surprise-account", session: "surprise-session", schema: "surprise-schema", theme: "theme" };
   S.KEYS = KEYS;
-  const RESET_KEYS = [KEYS.signup, KEYS.reply, KEYS.pending, KEYS.muted, KEYS.progress, KEYS.music, KEYS.inboxSeen];
+  const RESET_KEYS = [KEYS.signup, KEYS.reply, KEYS.pending, KEYS.muted, KEYS.progress, KEYS.music, KEYS.inboxSeen, KEYS.account, KEYS.session];
+  const SCHEMA = "2";
 
-  // ?reset=1 clears all progress (but keeps the theme); must run before anything reads storage
-  if (/(?:^|[?&])reset=1(?:&|$)/.test(location.search)) RESET_KEYS.forEach(k => Store.remove(k));
+  // ---- reset: ?reset=1 OR #reset (also #reset=1) clears everything except `theme`. A hash is never sent to the server,
+  // so it survives a dev server that strips the query. Runs here, before anything reads storage, on every page.
+  // The flag is then stripped with replaceState so a reload does not wipe her progress again.
+  let resetting = false; // set by reset(): stops Music's pagehide save from writing the position straight back
+  function clearAll() { RESET_KEYS.forEach(k => Store.remove(k)); }
+  function hasResetFlag() {
+    return /(?:^|[?&])reset=1(?:&|$)/.test(location.search) || /^#reset(?:=1)?$/.test(location.hash);
+  }
+  function stripResetFlag() {
+    try {
+      const q = location.search.replace(/([?&])reset=1(?:&|$)/, (m, lead) => (m.slice(-1) === "&" ? lead : "")).replace(/[?&]$/, "");
+      const hash = /^#reset(?:=1)?$/.test(location.hash) ? "" : location.hash;
+      history.replaceState(history.state, "", location.pathname + q + hash);
+    } catch (e) { /* replaceState blocked: a reload would wipe again, nothing more to do */ }
+  }
+  S.reset = function () { // console helper: Surprise.reset(), then reload
+    resetting = true; clearAll(); Store.set(KEYS.schema, SCHEMA);
+    return "surprise-kit: cleared (theme kept). Reload the page.";
+  };
+  if (hasResetFlag()) { clearAll(); stripResetFlag(); }
 
-  // ---- progress: which later pages are unlocked. letter after Yes; memories + inbox after the reply ----
-  const PAGES = ["letter", "memories", "inbox"];
+  // ---- schema migration: the build before Phase 5 has no secret word and an old `yes:true` that would skip the
+  // proposal, so it cannot be converted. On a missing/older schema value, wipe the old keys ONCE (keeping `theme` and
+  // the mute preference), then stamp the version. She has not received the site yet, so nothing real is lost.
+  if (Store.get(KEYS.schema, null) !== SCHEMA) {
+    [KEYS.signup, KEYS.reply, KEYS.pending, KEYS.progress, KEYS.inboxSeen, KEYS.music, KEYS.account, KEYS.session].forEach(k => Store.remove(k));
+    Store.set(KEYS.schema, SCHEMA);
+  }
+
+  // ---- progress: which pages are unlocked. proposal after a finished sign-up/login; letter after `accepted` (Yes);
+  // memories + inbox after the reply.
+  const PAGES = ["letter", "memories", "inbox"];                      // the pages the header nav knows
+  const FLOW = ["proposal", "letter", "memories", "inbox"];           // everything with an unlock flag
+  const LANDING = ["memories", "letter", "proposal"];                 // furthest first; inbox is a side page, never a landing target
   const Progress = {
+    // { proposal, letter, memories, inbox, accepted } - always all five booleans
     read() {
       const p = Store.getJSON(KEYS.progress, null), out = {};
-      PAGES.forEach(k => { out[k] = !!(p && typeof p === "object" && p[k] === true); });
+      FLOW.concat("accepted").forEach(k => { out[k] = !!(p && typeof p === "object" && p[k] === true); });
       return out;
     },
+    // unlock one page. Compat: the current index/letter pages still call unlock("letter") / unlock("memories") directly.
     unlock(page) {
-      if (PAGES.indexOf(page) < 0) return false;
+      if (FLOW.indexOf(page) < 0) return false;
       const p = Progress.read(); p[page] = true;
       return Store.setJSON(KEYS.progress, p);
     },
-    isUnlocked(page) { return Progress.read()[page] === true; }
+    isUnlocked(page) { return FLOW.indexOf(page) >= 0 && Progress.read()[page] === true; },
+    // Yes was pressed: sets `accepted` and unlocks the letter together
+    accept() { const p = Progress.read(); p.accepted = true; p.letter = true; return Store.setJSON(KEYS.progress, p); },
+    isAccepted() { return Progress.read().accepted === true; },
+    // the last page she unlocked ("memories" | "letter" | "proposal"), or null; used to send her onward after login
+    furthest() { const p = Progress.read(); return LANDING.find(k => p[k]) || null; },
+    // replace local progress with a copy (e.g. the server's, after login on a new device); junk is ignored
+    apply(obj) {
+      const p = {};
+      FLOW.concat("accepted").forEach(k => { p[k] = !!(obj && typeof obj === "object" && obj[k] === true); });
+      return Store.setJSON(KEYS.progress, p);
+    }
   };
   S.Progress = Progress;
 
-  // ---- which page is this? "letter" | "memories" | "inbox", or null (index.html, or anything else). Works for
-  // letter.html, /letter.html and extensionless /letter hosting, and for any href (pass a pathname).
+  // ---- session: this device is logged in. Kept apart from the account (which stands in for the server) so Phase A
+  // mirrors Phase B. "Not me / start fresh" clears only the session.
+  const Session = {
+    get() { const s = Store.getJSON(KEYS.session, null); return s && typeof s === "object" ? s : null; },
+    isActive() { return !!Session.get(); },
+    start(token) { return Store.setJSON(KEYS.session, { v: 1, token: token || null, ts: Date.now() }); },
+    clear() { return Store.remove(KEYS.session); }
+  };
+  S.Session = Session;
+
+  // ---- which page is this? "proposal" | "login" | "letter" | "memories" | "inbox", or null (index.html, anything else).
+  // Works for letter.html, /letter.html and extensionless /letter hosting, and for any href (pass a pathname).
+  const KNOWN = FLOW.concat("login");
   function pageOf(pathname) {
     let seg = String(pathname || "").split("/").pop();
     try { seg = decodeURIComponent(seg); } catch (e) { /* keep raw */ }
     seg = seg.replace(/\.html?$/i, "");
-    return PAGES.indexOf(seg) >= 0 ? seg : null;
+    return KNOWN.indexOf(seg) >= 0 ? seg : null;
   }
   const currentPage = () => pageOf(location.pathname);
 
@@ -60,18 +118,31 @@
   S.Inbox = Inbox;
 
   // ---- page guards: a page file calls Surprise.Guard.require("memories") on load ----
-  // Rules: letter needs a saved sign-up (Yes); memories + inbox need the unlock that the reply sets. Not allowed ->
-  // sign-up (index.html) if she never signed up, else letter.html. The target is never the page itself, so no loop
-  // (letter's only fallback is index.html; index.html is not guarded by this function). A saved sign-up / reply
-  // whose progress flag went missing self-heals instead of bouncing her.
+  // Rules (flag-based; the "accepted" flag is never inferred from old data):
+  //   proposal  needs a finished sign-up or login (its unlock flag)  -> else index.html (which shows sign-up or login)
+  //   letter    needs `accepted` (Yes), or the letter flag it sets    -> else proposal.html if open, else index.html
+  //   memories, inbox  need the unlock the reply sets (a saved reply heals a missing flag) -> else letter.html / proposal.html / index.html
+  //   login     the one page that is for logged-OUT visitors: logged in -> her furthest page; no account -> index.html
+  // The target is never the page itself, so there is no loop: each fallback is strictly "earlier" in the flow
+  // (memories -> letter -> proposal -> index), and index.html and login's onward target are never guarded by a
+  // later rule that points back.
+  const HREF = p => p + ".html";
   const Guard = {
+    // where she belongs when she is NOT allowed on `page`: the furthest open page, or index.html
+    onward() { const f = Progress.furthest(); return f ? HREF(f) : "index.html"; },
     target(page) {
-      if (PAGES.indexOf(page) < 0 || Progress.isUnlocked(page)) return null;
-      const su = Store.getJSON(KEYS.signup, null), signedUp = !!(su && su.yes);
-      if (page === "letter") { if (signedUp) { Progress.unlock("letter"); return null; } return "index.html"; }
+      if (page === "login") {
+        if (Session.isActive() && Progress.furthest()) return Guard.onward();
+        if (!Store.getJSON(KEYS.account, null)) return "index.html";
+        return null;
+      }
+      if (FLOW.indexOf(page) < 0 || Progress.isUnlocked(page)) return null;
+      if (page === "proposal") return "index.html";
+      if (page === "letter") return Progress.isAccepted() ? (Progress.unlock("letter"), null) : (Progress.isUnlocked("proposal") ? "proposal.html" : "index.html");
+      // memories / inbox
       const rep = Store.getJSON(KEYS.reply, null);
-      if (signedUp && rep && typeof rep === "object") { Progress.unlock("memories"); Progress.unlock("inbox"); return null; }
-      return signedUp ? "letter.html" : "index.html";
+      if (rep && typeof rep === "object" && Progress.isUnlocked("letter")) { Progress.unlock("memories"); Progress.unlock("inbox"); return null; }
+      return Progress.isUnlocked("letter") ? "letter.html" : (Progress.isUnlocked("proposal") ? "proposal.html" : "index.html");
     },
     // true = stay; false = she is being redirected (location.replace, so the guarded URL isn't left in history)
     require(page) {
@@ -186,7 +257,7 @@
   }
 
   function save() {
-    if (!trackId) return;
+    if (!trackId || resetting) return;
     lastSave = Date.now();
     // While autoplay is blocked the seek never lands, so currentTime sits at 0 - saving that
     // would throw away where she actually was. pendingSeek still holds the real position.
@@ -338,7 +409,7 @@
     try { u = new URL(a.getAttribute("href"), location.href); } catch (err) { return; }
     // locked pages never navigate, however she got to the link (nav, header envelope, any future link)
     const page = pageOf(u.pathname);
-    if (page && u.origin === location.origin && !Progress.isUnlocked(page) && page !== currentPage()) {
+    if (page && FLOW.indexOf(page) >= 0 && u.origin === location.origin && !Progress.isUnlocked(page) && page !== currentPage()) {
       e.preventDefault(); Chrome.hint(page); return;
     }
     const tgt = a.getAttribute("target");

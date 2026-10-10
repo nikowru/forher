@@ -241,12 +241,13 @@ html:has(.player[open]){overflow:hidden}
    wrapping down to a lonely last word. */
 .su-title{margin:0 auto;max-width:22ch;text-align:center;text-wrap:balance;
  font:600 clamp(2.1rem,4.4vw,3.2rem)/1.2 'Dancing Script',cursive;color:var(--btn);text-shadow:0 2px 10px rgba(var(--sh),.22)}
-.su-form{display:grid;grid-template-columns:1fr;grid-template-areas:"username" "mood" "icon" "music" "final";gap:1.1rem;min-width:0}
+.su-form{display:grid;grid-template-columns:1fr;grid-template-areas:"username" "secret" "mood" "icon" "music" "final";gap:1.1rem;min-width:0}
 @media (min-width:800px){
-  .su-form{grid-template-columns:1fr 1fr;column-gap:2.2rem;grid-template-areas:"username icon" "mood music" "final final"}
+  .su-form{grid-template-columns:1fr 1fr;column-gap:2.2rem;grid-template-areas:"username icon" "secret icon" "mood music" "final final"}
 }
 .su-step{display:flex;flex-direction:column;gap:.6rem;padding-bottom:1rem;border-bottom:1px solid var(--rule);min-width:0}
 .su-step[data-step="username"]{grid-area:username}
+.su-step[data-step="secret"]{grid-area:secret}
 .su-step[data-step="mood"]{grid-area:mood}
 .su-step[data-step="icon"]{grid-area:icon}
 .su-step[data-step="music"]{grid-area:music}
@@ -260,6 +261,9 @@ html:has(.player[open]){overflow:hidden}
 .su-input{width:100%;box-sizing:border-box;padding:.4em .2em;font:500 1.05rem/1.3 'Quicksand',sans-serif;
  color:var(--ink);background:transparent;border:0;border-bottom:2px solid var(--rule);border-radius:0}
 .su-input:focus-visible{border-bottom-color:var(--accent)}
+/* small editable hint under the secret-word field (text from CONFIG); hidden when empty */
+.su-hint{margin:0;font:500 .85rem/1.35 'Quicksand',sans-serif;color:var(--ink)}
+.su-hint:empty{display:none}
 .su-input::placeholder{color:var(--ink);opacity:.5}
 /* mood picker: a single row of circles (script.js's renderMoods() sets textContent to the
    emoji and aria-label to MOODS' label field, e.g. "A little down" - no visible label text
@@ -331,10 +335,10 @@ html:has(.player[open]){overflow:hidden}
    gallery-dev's upcoming physics rewrite (S3/S4) anchors #su-no's eventual position:absolute
    to - that contract is unchanged here, su-no is still plain layout, no motion added. */
 .su-yesno{position:relative;display:flex;flex-wrap:wrap;gap:1rem;justify-content:center;margin-top:.3rem}
-.su-yes,.su-no{box-sizing:border-box;min-width:7em;padding:.6em 1.6em;border-radius:4px;cursor:pointer;
+.su-yes,.su-no,.su-continue{box-sizing:border-box;min-width:7em;padding:.6em 1.6em;border-radius:4px;cursor:pointer;
  font:600 1.05rem/1.2 'Quicksand',sans-serif}
-.su-yes{color:var(--btn-text);background:var(--btn);border:0;box-shadow:0 3px 8px rgba(var(--sh),.35)}
-.su-yes:hover{filter:brightness(1.25)}
+.su-yes,.su-continue{color:var(--btn-text);background:var(--btn);border:0;box-shadow:0 3px 8px rgba(var(--sh),.35)}
+.su-yes:hover,.su-continue:hover{filter:brightness(1.25)}
 .su-no{color:var(--btn);background:transparent;border:1.5px solid var(--btn)}
 .su-no:hover{background:var(--btn);color:var(--btn-text)}
 /* honeypot: off-screen clip, not display:none (bots skip that); tabindex=-1 in the markup already keeps it out of Tab */
@@ -486,3 +490,125 @@ body.site{height:auto;min-height:100%;overflow:visible;display:flex;flex-directi
 #inbox-when{margin:0;text-align:right;font:italic 500 1.05rem/1.4 'Cormorant Garamond',Georgia,serif;color:var(--ink)}
 #inbox-reply:empty,#inbox-when:empty{display:none}
 #inbox-empty{margin:0;text-align:center;font:italic 500 1.3rem/1.5 'Cormorant Garamond',Georgia,serif;color:var(--ink)}
+
+/* Phase 5 PA11: login page reuses .signup/.su-card/.su-title/.su-input/.su-continue. Narrower card, one column.
+   #lg-msg has NO display rule on purpose (same as .su-msg), so [hidden] keeps working. */
+.lg-card{width:min(460px,94vw)}
+.lg-form{display:flex;flex-direction:column;gap:1.1rem;min-width:0}
+.lg-actions{display:flex;flex-direction:column;align-items:center;gap:.8rem}
+.lg-reset{padding:.3em .5em;border:0;background:transparent;cursor:pointer;font:500 .9rem/1.3 'Quicksand',sans-serif;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.lg-reset:hover{color:var(--btn)}
+/* in-page confirmation for "not me / start fresh": a native <dialog> (same family as .player) */
+html:has(.lg-confirm[open]){overflow:hidden}
+.lg-confirm{width:min(420px,92vw);box-sizing:border-box;padding:1.4rem 1.6rem;border:0;border-radius:8px;background:var(--paper);color:var(--ink);
+ box-shadow:0 26px 50px -16px rgba(var(--sh),.5),0 4px 10px rgba(var(--sh),.22)}
+.lg-confirm::backdrop{background:var(--backdrop);backdrop-filter:blur(3px)}
+.lg-confirm[open]{animation:pop .35s cubic-bezier(.2,.8,.3,1)}
+.lg-confirm :focus-visible{--ring:var(--ring-paper)}
+.lg-confirm-title{margin:0 0 .5rem;text-align:center;font:600 clamp(1.5rem,3vw,1.9rem)/1.2 'Dancing Script',cursive;color:var(--btn)}
+.lg-confirm-text{margin:0 0 1.1rem;text-align:center;font:500 1rem/1.45 'Quicksand',sans-serif;color:var(--ink)}
+.lg-confirm-btns{display:flex;flex-wrap:wrap;gap:1rem;justify-content:center}
+.lg-confirm-yes,.lg-confirm-no{box-sizing:border-box;min-width:7em;padding:.6em 1.4em;border-radius:4px;cursor:pointer;font:600 1rem/1.2 'Quicksand',sans-serif}
+.lg-confirm-yes{color:var(--btn-text);background:var(--btn);border:0;box-shadow:0 3px 8px rgba(var(--sh),.35)}
+.lg-confirm-yes:hover{filter:brightness(1.25)}
+.lg-confirm-no{color:var(--btn);background:transparent;border:1.5px solid var(--btn)}
+.lg-confirm-no:hover{background:var(--btn);color:var(--btn-text)}
+@media (prefers-reduced-motion:reduce){.lg-confirm[open]{animation:none}}
+
+/* Phase 5 PA7: proposal.html, the question page. Full-screen, centred, no header/footer (only #theme + #mute float on top).
+   Surface: the usual theme background under a deep shade (rgba(var(--sh)) is the same dim language as #stage::after on
+   letter.html, here baked into body's background so the drifting #air hearts stay visible above it). Text colour is
+   --paper in BOTH themes (cream in light, near-white in dark): the dimmed surface is dark enough for it in each. */
+body.proposal{background:linear-gradient(rgba(var(--sh),.84),rgba(var(--sh),.84)),radial-gradient(ellipse at 50% 38%,var(--bg-hi),var(--bg) 70%),var(--bg)}
+body.proposal{--pr-glow:20%}
+:root[data-theme="dark"] body.proposal{--pr-glow:80%}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) body.proposal{--pr-glow:80%}}
+.pr-stage{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;overflow-y:auto;box-sizing:border-box;
+ padding:max(64px,env(safe-area-inset-top,0px)) 5vw calc(env(safe-area-inset-bottom,0px) + 40px)}
+@supports (align-items:safe center){.pr-stage{align-items:safe center;justify-content:safe center}}
+/* soft glow behind the words: --glow softened further so the cream lines never lose contrast against it; slow breathing */
+.pr-stage::before{content:"";position:fixed;left:50%;top:44%;width:min(1200px,110vw);height:min(760px,82vh);transform:translate(-50%,-50%);pointer-events:none;
+ background:radial-gradient(closest-side,color-mix(in srgb,var(--glow) var(--pr-glow),transparent),transparent);animation:pr-breathe 9s ease-in-out infinite}
+@keyframes pr-breathe{0%,100%{opacity:.75;transform:translate(-50%,-50%) scale(.96)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.04)}}
+.pr-stage :focus-visible{--ring:var(--paper)}
+.pr-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:clamp(1.6rem,5vh,3.2rem);width:100%;max-width:1100px;text-align:center}
+.pr-head{position:relative;width:100%}
+.pr-text{display:flex;flex-direction:column;align-items:center;gap:clamp(.4rem,2vh,1.2rem)}
+/* the two lines: hidden until JS adds .is-in (one after the other); NOT the hidden attribute, they fade and rise in */
+.pr-line{margin:0;max-width:17ch;text-wrap:balance;text-align:center;color:var(--paper);font-family:'Dancing Script',cursive;font-weight:700;
+ text-shadow:0 2px 18px rgba(var(--sh),.7),0 0 2px rgba(var(--sh),.5);
+ opacity:0;transform:translateY(22px);filter:blur(6px);transition:opacity 1.8s ease,transform 1.8s cubic-bezier(.2,.8,.3,1),filter 1.8s ease}
+.pr-line1{font-size:clamp(2.4rem,min(5.6vw,9vh),4.8rem);line-height:1.15}
+.pr-line2{font-size:clamp(3rem,min(8.6vw,14vh),7.2rem);line-height:1.1}
+.pr-line.is-in{opacity:1;transform:none;filter:none}
+/* confirmation after Yes: no display rule, so [hidden] works; it sits where the lines were (they fade out via .is-confirmed) */
+.pr-confirm{position:absolute;left:50%;top:50%;translate:-50% -50%;width:100%;margin:0;color:var(--paper);text-align:center;text-wrap:balance;
+ font:700 clamp(2.4rem,min(6.6vw,11vh),5.4rem)/1.15 'Dancing Script',cursive;text-shadow:0 2px 18px rgba(var(--sh),.7),0 0 2px rgba(var(--sh),.5);animation:pr-confirm-in 1.6s ease .5s backwards}
+@keyframes pr-confirm-in{from{opacity:0;translate:-50% -35%;filter:blur(6px)}to{opacity:1;translate:-50% -50%;filter:none}}
+.pr-inner.is-confirmed .pr-line{opacity:0;transform:translateY(-14px);filter:blur(4px);transition-duration:.9s}
+.pr-inner.is-confirmed .pr-buttons{opacity:0;visibility:hidden;pointer-events:none;transition:opacity .8s ease 1.4s,visibility 0s linear 2.2s}
+/* buttons. #pr-buttons is the positioned container Nodge needs; the row never changes size when No moves (No keeps its slot) */
+.pr-buttons{position:relative;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:clamp(1rem,3vw,2rem);transition:opacity .8s ease}
+.pr-yes-wrap{position:relative;display:inline-flex}
+.pr-btn{box-sizing:border-box;min-height:48px;cursor:pointer;border-radius:999px;font-family:'Quicksand',sans-serif;font-weight:600;line-height:1.2;
+ opacity:0;visibility:hidden;pointer-events:none}
+.pr-btn.is-in{opacity:1;visibility:visible;pointer-events:auto}
+/* Yes: cream fill, deep ink label (deep teal on cream in light, dark slate on near-white in dark); a gentle pulsing halo. The reveal is
+   opacity-only (Nodge owns No's transform, and a transform transition would smear its glides); size changes use font-size/padding, never scale. */
+.pr-yes{min-width:7em;padding:.62em 2em;font-size:clamp(1.5rem,2.6vw,2.1rem);color:var(--btn);background:var(--paper);border:0;
+ box-shadow:0 0 22px 4px color-mix(in srgb,var(--petal) 55%,transparent),0 6px 16px rgba(var(--sh),.45);
+ transition:opacity 1.2s ease,visibility 0s,font-size .7s ease,padding .7s ease,filter .2s;animation:pr-pulse 2.8s ease-in-out infinite}
+@keyframes pr-pulse{0%,100%{box-shadow:0 0 14px 2px color-mix(in srgb,var(--petal) 40%,transparent),0 6px 16px rgba(var(--sh),.45)}
+ 50%{box-shadow:0 0 38px 12px color-mix(in srgb,var(--petal) 75%,transparent),0 6px 16px rgba(var(--sh),.45)}}
+.pr-yes:hover{filter:brightness(1.06)}
+.pr-yes.pr-yes-big{font-size:clamp(1.75rem,3.1vw,2.5rem);padding:.66em 2.2em}
+.pr-no{min-width:5.5em;padding:.6em 1.7em;font-size:clamp(1.1rem,1.7vw,1.35rem);color:var(--paper);background:transparent;border:2px solid var(--paper);
+ text-shadow:0 1px 6px rgba(var(--sh),.6);transition:opacity 1.2s ease,visibility 0s,font-size .7s ease,padding .7s ease,background .2s,color .2s}
+.pr-no:hover{background:var(--paper);color:var(--btn);text-shadow:none}
+/* shrunk No: smaller, never below a comfortable target (min-height 44px; min-width keeps it wide enough too) */
+.pr-no.pr-no-small{min-height:44px;min-width:4.6em;padding:.5em 1.25em;font-size:clamp(.95rem,1.35vw,1.1rem)}
+/* "are you sure, baby?": absolutely placed under the buttons so showing it never shifts the row (and Nodge's home spot) */
+.pr-cheeky{position:absolute;left:0;right:0;top:100%;margin:clamp(.7rem,2vh,1.2rem) 0 0;color:var(--paper);text-wrap:balance;
+ font:600 clamp(1.4rem,2.4vw,2rem)/1.2 'Dancing Script',cursive;text-shadow:0 2px 12px rgba(var(--sh),.7),0 0 2px rgba(var(--sh),.5);animation:pr-cheeky-in .8s ease backwards}
+@keyframes pr-cheeky-in{from{opacity:0;translate:0 8px}to{opacity:1;translate:0 0}}
+.pr-inner.is-confirmed .pr-cheeky{opacity:0}
+/* celebration: .is-celebrating on #pr-buttons. 14 pre-placed hearts/petals burst out from the Yes button, then end at opacity 0 (their base state is invisible) */
+.pr-burst{position:absolute;left:50%;top:50%;width:0;height:0;pointer-events:none;z-index:2}
+.pr-burst i{position:absolute;left:-.55em;top:-.55em;width:1.1em;height:1.1em;font-size:clamp(1.1rem,2vw,1.7rem);opacity:0;background:var(--petal)}
+.pr-burst i:nth-child(odd){-webkit-mask:var(--heart);mask:var(--heart)}
+.pr-burst i:nth-child(even){border-radius:70% 0 70% 0}
+.pr-burst i:nth-child(3n+1){background:var(--paper)}
+.pr-burst i:nth-child(3n+2){background:var(--accent)}
+.pr-burst i:nth-child(4n){background:var(--speck)}
+.pr-burst i:nth-child(1){--a:0deg;--d:11em;--s:1.2}.pr-burst i:nth-child(2){--a:26deg;--d:8em;--s:.8}.pr-burst i:nth-child(3){--a:52deg;--d:12em;--s:1}
+.pr-burst i:nth-child(4){--a:77deg;--d:9em;--s:1.3}.pr-burst i:nth-child(5){--a:103deg;--d:12em;--s:.9}.pr-burst i:nth-child(6){--a:128deg;--d:8em;--s:1.1}
+.pr-burst i:nth-child(7){--a:154deg;--d:11em;--s:1.3}.pr-burst i:nth-child(8){--a:180deg;--d:9em;--s:.8}.pr-burst i:nth-child(9){--a:206deg;--d:12em;--s:1.1}
+.pr-burst i:nth-child(10){--a:231deg;--d:8em;--s:1.2}.pr-burst i:nth-child(11){--a:257deg;--d:11em;--s:.9}.pr-burst i:nth-child(12){--a:283deg;--d:9em;--s:1.3}
+.pr-burst i:nth-child(13){--a:309deg;--d:12em;--s:1}.pr-burst i:nth-child(14){--a:335deg;--d:8.5em;--s:1.1}
+.is-celebrating .pr-burst i{animation:pr-pop 1.5s cubic-bezier(.15,.7,.3,1) forwards}
+.is-celebrating .pr-burst i:nth-child(even){animation-duration:1.8s;animation-delay:.08s}
+@keyframes pr-pop{0%{opacity:0;transform:translate(0,0) scale(.2) rotate(0)}
+ 15%{opacity:1}
+ 100%{opacity:0;transform:translate(calc(cos(var(--a))*var(--d)),calc(sin(var(--a))*var(--d) + 2.5em)) scale(var(--s)) rotate(150deg)}}
+/* drifting hearts: Air.init() (js/common.js, untouched) already makes 18 <span>s in #air; a page-scoped selector restyles them
+   as hearts - no JS change, no duplicate particles. !important is only there to beat Air's inline width/height/duration. */
+.proposal{--heart:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 21.2C6 16.6 2.2 13 2.2 8.8 2.2 5.9 4.4 3.8 7.1 3.8c2 0 3.7 1.1 4.9 3 1.2-1.9 2.9-3 4.9-3 2.7 0 4.9 2.1 4.9 5 0 4.2-3.8 7.8-9.8 12.4z'/></svg>") center/contain no-repeat}
+.proposal #air span,.proposal #air span.pt{--hs:14px;width:var(--hs)!important;height:var(--hs)!important;border-radius:0;-webkit-mask:var(--heart);mask:var(--heart);background:var(--petal);
+ animation-name:pr-drift;animation-duration:44s!important;animation-timing-function:linear}
+.proposal #air span:nth-child(3n){--hs:22px;animation-duration:58s!important;background:var(--speck)}
+.proposal #air span:nth-child(3n+1){--hs:10px;animation-duration:36s!important}
+.proposal #air span:nth-child(4n+2){background:var(--accent)}
+.proposal #air span:nth-child(5n){--hs:30px;animation-duration:70s!important}
+@keyframes pr-drift{0%{transform:translate3d(0,10vh,0) rotate(-12deg);opacity:0}8%{opacity:.5}25%{transform:translate3d(calc(var(--dx)*.4),-28vh,0) rotate(10deg)}
+ 50%{transform:translate3d(calc(var(--dx)*-.2),-62vh,0) rotate(-10deg)}75%{transform:translate3d(calc(var(--dx)*.6),-90vh,0) rotate(12deg)}92%{opacity:.4}100%{transform:translate3d(var(--dx),-118vh,0) rotate(-6deg);opacity:0}}
+/* reduced motion: the global rule already stops every animation/transition and hides #air. Here: delays go too, the Yes keeps its
+   static halo, the glow holds its resting look, the burst stays at its invisible base state (skipped), confirm/cheeky simply appear. */
+@media (prefers-reduced-motion:reduce){
+ .pr-stage::before{animation:none;opacity:1}
+ .pr-line,.pr-btn,.pr-buttons,.pr-inner.is-confirmed .pr-buttons{transition-delay:0s!important}
+ .pr-line{filter:none;transform:none}
+ .pr-inner.is-confirmed .pr-line{opacity:0}
+ .pr-confirm,.pr-cheeky{animation:none}
+ .is-celebrating .pr-burst i{animation:none;opacity:0}}
+/* narrow screens: one column already; just tighten */
+@media (max-width:900px){.pr-line{max-width:15ch}.pr-inner{gap:1.8rem}}
