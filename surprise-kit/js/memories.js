@@ -91,8 +91,12 @@
 
     function dropPlayer() { if (yt) { yt.destroy(); yt = null; } }
 
-    // FR-8: when a video can't play here, show its caption (already under the video) and a link to YouTube
-    function fallback(c) {
+    // FR-8: when a video can't play here, show its caption (already under the video) and a link to YouTube.
+    // `why` is logged so a failure can be diagnosed instead of guessed at: an onError code (101/150 =
+    // the owner disabled embedding, 100 = gone/private, 2 = bad id, 5 = player error), a blocked API
+    // script, or the timeout (usually an extension blocking youtube.com / youtube-nocookie.com).
+    function fallback(c, why) {
+      console.warn("surprise-kit: clip " + (c && c.id) + " fell back to the YouTube link -", why || "(no reason given)");
       dropPlayer();
       const box = document.createElement("div"), p = document.createElement("p"), a = document.createElement("a");
       box.className = "p-fallback"; p.textContent = CONFIG.player.unavailable;
@@ -111,18 +115,18 @@
       $("p-nav").hidden = shown.length < 2;
       const mount = document.createElement("div"); video.replaceChildren(mount);
       if (!player.open) { player.showModal(); $("p-close").focus(); }
-      if (!/^[\w-]{11}$/.test(c.youtubeId || "")) return fallback(c);
+      if (!/^[\w-]{11}$/.test(c.youtubeId || "")) return fallback(c, "youtubeId is not 11 characters: " + JSON.stringify(c.youtubeId));
       // YouTube blocked or very slow: don't leave her looking at a black box
-      const timer = setTimeout(() => { if (live() && !yt) fallback(c); }, 10000);
+      const timer = setTimeout(() => { if (live() && !yt) fallback(c, "timed out after 10s (typeof YT = " + typeof YT + ") - usually an ad/privacy blocker"); }, 10000);
       loadYouTubeApi().then(() => {
         clearTimeout(timer);
         if (!live() || !mount.isConnected) return; // closed, switched clip, or already fell back
         yt = new YT.Player(mount, {
           host: "https://www.youtube-nocookie.com", videoId: c.youtubeId, width: "100%", height: "100%",
           playerVars: { autoplay: 1, start: c.startSeconds || 0, rel: 0, playsinline: 1 },
-          events: { onError: () => setTimeout(() => { if (id === openId) fallback(c); }) } // bad id, removed, or embedding off
+          events: { onError: e => setTimeout(() => { if (id === openId) fallback(c, "YouTube onError code " + (e && e.data)); }) }
         });
-      }).catch(() => { clearTimeout(timer); if (live()) fallback(c); });
+      }).catch(err => { clearTimeout(timer); if (live()) fallback(c, "the IFrame API script failed to load - " + (err && err.type || err)); });
     }
 
     $("p-prev").addEventListener("click", () => openClip(current - 1));
