@@ -10,8 +10,10 @@ She moves through them in order, and each one unlocks the next. Opening one earl
 
 | Page | What it is |
 |---|---|
-| `index.html` | The sign-up: her name, mood, icon, music, and the Yes/No question |
-| `letter.html` | The dimmed intro, the envelope and seal, the letter, and her reply |
+| `index.html` | The sign-up: her name, a secret word, mood, icon and music. Once an account exists, this sends her to the login instead. |
+| `login.html` | "Welcome back" — her username and secret word, so she can pick up where she left off |
+| `proposal.html` | "will you be my baby forever?" — the reveal, the dodging No, and the Yes |
+| `letter.html` | The letter falling in, the notification, the seal, and her reply |
 | `memories.html` | The clip inventory, with collection tabs and the video player |
 | `inbox.html` | What she wrote, kept for her to re-read |
 
@@ -22,17 +24,19 @@ She moves through them in order, and each one unlocks the next. Opening one earl
 | `style.css` | All styling for every page. Both color themes are CSS variables at the top. |
 | `js/config.js` | **Edit wording here.** The `CONFIG` block, plus the `ICONS`, `MOODS` and `MUSIC` lists and the No-button tunables. |
 | `js/common.js` | Shared behavior: storage, progress and page guards, music across pages, the header and footer, page fades, `?reset=1` |
-| `js/signup.js`, `js/letter.js`, `js/memories.js`, `js/inbox.js` | One file per page, loaded only by that page |
+| `js/api.js` | Every read and write goes through here. Blank URL = it all stays in her browser; URL set = the Sheet is the only store. |
+| `js/nodge.js` | The dodging "No" button |
+| `js/signup.js`, `js/login.js`, `js/proposal.js`, `js/letter.js`, `js/memories.js`, `js/inbox.js` | One file per page, loaded only by that page |
 | `clips.json` | Fallback clip list, used if the Memories sheet isn't set up (or its fetch fails) |
 | `assets/icons/` | Icon images for the sign-up "choose an icon" step |
 | `assets/music/` | Audio tracks for the sign-up "choose your music" step |
 | `assets/favicon.svg` | The little envelope in the tab |
-| `backend/Code.gs` | The optional Google Apps Script source — see "Save her answers to a Google Sheet" below |
-| `backend/SETUP.md` | Step-by-step setup for the Sheet + Apps Script |
+| `backend/Code.gs` | The optional Google Apps Script backend — see "Save her answers to a Google Sheet" below |
+| `docs/backend-setup.md` | Step-by-step setup for the Sheet + Apps Script |
 | `robots.txt` | Asks search engines to stay away |
 | `docs/` | `PRD.md` (the spec) and `board.md` (task board) |
 
-Each page loads `js/config.js`, then `js/common.js`, then its own file. They're ordinary scripts sharing one `Surprise` object — deliberately not ES modules, so the pages still work when opened straight from a folder.
+Each page loads `js/config.js`, then `js/common.js`, then `js/api.js`, then its own file. They're ordinary scripts sharing one `Surprise` object — deliberately not ES modules, so the pages still work when opened straight from a folder.
 
 ## Run it locally
 
@@ -123,7 +127,7 @@ There are two ways to feed the inventory. If you've set up the Google Sheet (see
 
 ### Option A: the Memories sheet (no redeploy needed)
 
-Once `backend/SETUP.md` is done and `MEMORIES_CSV_URL` is filled in in `js/config.js`, just add a row to the **Memories** tab: `title | note | date | youtubeId | collection` — same rules as the table below (`date` as `YYYY-MM-DD`, `youtubeId` the 11-character id, `collection` matching a collection you're already using elsewhere in the sheet). The site derives its tabs from whatever collection names appear in the sheet, so a brand-new collection name just works.
+Once [`docs/backend-setup.md`](docs/backend-setup.md) is done and `APPS_SCRIPT_URL` is filled in in `js/config.js`, just add a row to the **Memories** tab: `title | note | date | youtubeId | collection | order` — same rules as the table below (`date` as `YYYY-MM-DD`, `youtubeId` the bare 11-character id, `collection` matching one you are already using). The site builds its tabs from whatever collection names appear in the sheet, so a brand-new one just works, and `order` sets the sequence.
 
 ### Option B: clips.json (needs a redeploy)
 
@@ -190,22 +194,26 @@ The placeholder clips use the fake ID `XXXXXXXXXXX`, so they show an empty thumb
 
 ## Save her answers to a Google Sheet (optional)
 
-By default, her sign-up answers and letter reply only live in her own browser's storage — fine for testing, but you'll lose them if she clears her browser or uses a different device. Setting up a free Google Sheet + Apps Script fixes that: her sign-up and reply each get saved as a timestamped row, in a Sheet in your own Drive, that only you can read.
+By default everything lives in her own browser's storage — fine for testing, but it's lost if she clears her browser, and it doesn't follow her to another device. A free Google Sheet + Apps Script fixes that: her answers, her progress and her reply live in a Sheet in your own Drive, so she can open the site anywhere and carry on.
 
-**Full step-by-step instructions are in [`backend/SETUP.md`](backend/SETUP.md).** Short version:
+**Full step-by-step instructions are in [`docs/backend-setup.md`](docs/backend-setup.md).** Short version:
 
-1. Create a Google Sheet with two tabs: `Responses` (the script fills this in itself) and `Memories` (you fill this in — see "Add or change clips" above).
-2. In the Sheet, **Extensions → Apps Script**, paste in `backend/Code.gs`, and deploy it as a web app (**Execute as: Me**, **Who has access: Anyone**).
-3. Copy the deployed URL into `APPS_SCRIPT_URL` at the top of `js/config.js`.
-4. **File → Share → Publish to web**, publish the `Memories` tab as CSV, and copy that URL into `MEMORIES_CSV_URL`, just below it in `js/config.js`.
+1. Create a **blank** Google Sheet.
+2. **Extensions → Apps Script**, paste in `backend/Code.gs`, save.
+3. Run the `setup` function once and approve the permissions. It builds the `Account` and `Memories` tabs and generates the salt for you.
+4. **Deploy → New deployment → Web app**, with **Execute as: Me** and **Who has access: Anyone**. Copy the `/exec` URL.
+5. Paste it into `APPS_SCRIPT_URL` at the top of `js/config.js`. That one value is the whole switch.
 
 A few things worth knowing:
 
-- **It's write-only, on purpose.** The script has no way to send data back out — it can only add new rows. You read her replies by opening the Sheet yourself; the website can never display them, even if someone found the Apps Script URL.
-- **No API key in the repo.** Nothing secret is checked into the code; the deployed URL itself is the only thing you paste in, and it can only be used to submit new rows, never read them.
-- **If sending fails** (she's offline, or you haven't set this up yet), her answers stay saved in her browser and the site quietly retries later — she never sees an error either way.
-- **Leave both config values blank** if you don't want this at all; the site works exactly the same, it just doesn't send anywhere beyond her own browser, and the inventory uses `clips.json` instead of the Memories sheet.
-- **Redeploying the script later:** use "New version" under **Deploy → Manage deployments**, not "New deployment" — that keeps the same URL so you don't have to update `js/config.js` again. Full explanation, plus the (generous, won't-matter-for-one-person) quota limits, is in `backend/SETUP.md`.
+- **One account, ever.** The first sign-up claims it; after that the script refuses a second one and the site shows the login instead. She gets back in with her username and secret word.
+- **The secret word is never stored in readable form** — only a salted SHA-256 hash, with the salt kept in Script Properties, out of this repo. Be clear-eyed about what that buys you though: it's a username and a secret word, not real security. See the "limits, honestly" section of the setup doc.
+- **No keys or secrets in the repo.** `APPS_SCRIPT_URL` ships blank, and the only thing you ever paste in is the deployed URL — which is necessarily visible in the page source anyway. That's why the script returns nothing personal without a valid session.
+- **The clip list is public, her letter is not.** Anyone with the URL can fetch the Memories rows; her profile and reply need a session token.
+- **Leave `APPS_SCRIPT_URL` blank** if you don't want any of this — the site works exactly the same, just confined to her browser, and the inventory uses `clips.json`.
+- **If a request fails,** she sees a warm message and keeps whatever she typed; the site retries quietly. It never shows a raw error. The first request after a quiet spell takes a few seconds while Google wakes the script, so there's a loading state.
+- **Redeploying after you edit the script:** use **Deploy → Manage deployments → pencil → New version**, not "New deployment" — that keeps the same URL so you don't touch `js/config.js` again.
+- **Testing:** `?reset=1` or `#reset` only clears *that browser*. To clear the account itself, run the `resetAccount` function in the Apps Script editor.
 
 ## Deploy (private)
 
@@ -234,7 +242,8 @@ The `noindex` tag and `robots.txt` keep search engines away, and unlisted videos
 - [ ] The real letter is in `CONFIG.letter`, and the placeholders `(your name)` and `XXXXXXXXXXX` are gone
 - [ ] Real icons are in `assets/icons/` and the `ICONS` array points at them
 - [ ] Real music is in `assets/music/` and the `MUSIC` array points at it (or you're fine with the placeholder silence)
-- [ ] If you set up the Google Sheet: `APPS_SCRIPT_URL` and `MEMORIES_CSV_URL` are filled in in `js/config.js`, and a test sign-up actually lands a row in the `Responses` tab
+- [ ] If you set up the Google Sheet: `APPS_SCRIPT_URL` is filled in in `js/config.js`, a test sign-up lands a row in the `Account` tab, and `resetAccount` has been run afterwards so hers is the first
+- [ ] You know her secret word too, since there is no "forgot it" — only `resetAccount`
 - [ ] Every clip plays in the deployed site, not just locally
 - [ ] Tested on her laptop's browser and wifi, in both themes
 - [ ] Opened in a private window with `?reset=1`: sign-up appears, no console errors (F12), and the full flow (sign-up → intro → letter → reply → inventory) works end to end

@@ -1,13 +1,10 @@
 // Shared configuration: all wording, option lists and tunables live here (classic script, shared via window.Surprise).
 window.Surprise = window.Surprise || {};
 
-// ---- Google Apps Script backend (optional; see backend/SETUP.md) ----
-// Paste your deployed web app URL here once you've followed backend/SETUP.md.
-// Leave blank to skip remote saving entirely; sign-up/reply still save locally.
+// ---- Google Apps Script backend (optional; see docs/backend-setup.md) ----
+// Paste your deployed web app URL (ends in /exec) here once you have followed docs/backend-setup.md.
+// BLANK = everything stays in this browser (local mode). Set = the Sheet is the only store (no silent local fallback).
 const APPS_SCRIPT_URL = "";
-// Paste the published "Memories" tab CSV URL here (backend/SETUP.md step 5).
-// Leave blank to use the clips.json placeholders in this repo instead.
-const MEMORIES_CSV_URL = "";
 
 // ---- "No" button feel (sign-up card, final step) - tweak these to change how it dodges ----
 // Units: px, seconds (per-second values are px/s or px/s^2), ms where named. Sensible range in [].
@@ -130,6 +127,7 @@ const CONFIG = {
     secretLabel: "A secret word only we know",
     secretHint: "Something only we would remember. You will need it to come back.",
     continue: "Continue",
+    loading: "One moment...", // Continue's label while the account is being created (it is disabled meanwhile)
     finalQuestion: "Will you be my baby forever?",
     yes: "Yes",
     no: "No",
@@ -144,7 +142,8 @@ const CONFIG = {
     // shown in #su-msg when the account could not be created
     errors: {
       invalid: "I need your name and our secret word first, please?",
-      network: "Something went wrong on my side. Try once more in a moment?"
+      network: "Something went wrong on my side. Try once more in a moment?",
+      locked: "Too many tries for now. Give it a few minutes and try again, sweetheart?"
     }
   },
   // login page wording (js/login.js); placeholder copy, edit freely
@@ -153,6 +152,7 @@ const CONFIG = {
     usernameLabel: "What should I call you?",
     secretLabel: "Our secret word",
     continue: "Continue",
+    loading: "One moment...", // Continue's label while the login request is in flight (it is disabled meanwhile)
     reset: "Not me / start fresh",
     // gentle prompts when Continue is pressed with a field empty (first empty one wins)
     missing: {
@@ -162,6 +162,8 @@ const CONFIG = {
     // ONE message for a wrong username or a wrong word: never say which was wrong
     wrong: "Hmm, that does not look right. Try again, sweetheart?",
     network: "Something went wrong on my side. Try once more in a moment?",
+    // too many wrong tries in a row: the server pauses logins for a few minutes (kind, and says nothing about which part was wrong)
+    locked: "Too many tries for now. Give it a few minutes and try again, sweetheart?",
     // "not me" confirmation dialog: forgets only this device, never the saved account
     confirm: {
       title: "Not you?",
@@ -223,7 +225,6 @@ const MUSIC = [
 
 // Top-level const above is already global to other classic scripts; hang them on Surprise too, for explicitness.
 Surprise.APPS_SCRIPT_URL = APPS_SCRIPT_URL;
-Surprise.MEMORIES_CSV_URL = MEMORIES_CSV_URL;
 Surprise.CONFIG = CONFIG;
 Surprise.MOODS = MOODS;
 Surprise.ICONS = ICONS;

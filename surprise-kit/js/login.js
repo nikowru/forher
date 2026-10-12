@@ -55,10 +55,14 @@
         return;
       }
       busy = true; unmark(); clearMsg();
+      const btn = $("lg-continue");
+      btn.disabled = true; btn.setAttribute("aria-busy", "true"); btn.textContent = L.loading; // no double-submit; she sees it working
       Api.login(username.value, secret.value).then(r => {
         if (!r.ok) {
           busy = false;
-          if (r.error === "wrong") { // one message whichever part was wrong; the typed username stays, the word is cleared
+          btn.disabled = false; btn.removeAttribute("aria-busy"); btn.textContent = L.continue;
+          if (r.error === "locked") showMsg(L.locked); // paused for a few minutes: keep both fields as typed
+          else if (r.error === "wrong") { // one message whichever part was wrong; the typed username stays, the word is cleared
             showMsg(L.wrong); secret.value = ""; secret.focus();
           } else showMsg(L.network);
           return;

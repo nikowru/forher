@@ -1,70 +1,350 @@
-// Apps Script backend for the surprise site.
-// What this does: accepts her sign-up answers and her letter reply and appends
-// each as a timestamped row in the "Responses" tab of a Google Sheet in your Drive.
-// There is no doGet and no read path of any kind: this script can only be written
-// to, never read from, so her replies can never come back out through the public
-// URL. You read them by opening the Sheet yourself.
-// Full setup walkthrough: backend/SETUP.md.
+/**
+ * Apps Script backend for the surprise site (Phase B).
+ *
+ * One account, one Google Sheet. The site talks to this through js/api.js's remote driver.
+ * Setup walkthrough: docs/backend-setup.md. Run setup() once before deploying.
+ *
+ * WHAT THIS PROTECTS, HONESTLY
+ * - The secret word is stored only as a salted SHA-256 hash; the salt lives in Script Properties,
+ *   never in this file and never in the repo. A leaked Sheet alone does not reveal the word.
+ * - SHA-256 is FAST, so a short secret word would not survive determined offline guessing if the
+ *   Sheet AND the salt both leaked. This is "a username and a secret word", not strong auth.
+ * - The Web app URL is necessarily visible in the site's source. Anyone who finds it can call
+ *   getMemories (the clip list) and attempt logins (rate-limited). They cannot read her profile or
+ *   her reply without a valid session token.
+ * - Everything is as private as the Google account that owns this Sheet.
+ */
 
-const RESPONSES_SHEET = 'Responses';
-const HONEYPOT_FIELD = 'website'; // must arrive empty; bots tend to fill every field they see
-const MAX_REPLY_LENGTH = 2000;
-const MAX_FIELD_LENGTH = 200;
+var SHEET_ACCOUNT = 'Account';
+var SHEET_MEMORIES = 'Memories';
 
+var PROP_SALT = 'SECRET_SALT';      // created by setup() if missing; never leaves the server
+var PROP_TOKENS = 'SESSION_TOKENS'; // JSON array of { h: <token hash>, exp: <ms> }
+
+var MAX_USERNAME = 60;
+var MAX_SECRET = 100;
+var MAX_REPLY = 2000;               // matches REPLY_MAX in js/api.js
+var MAX_FIELD = 60;                 // mood / icon / music ids
+var TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days; she should not be asked to log in often
+var MAX_TOKENS = 10;                // keep a handful of devices, prune the rest
+
+var LOCKOUT_TRIES = 5;              // wrong attempts in a row...
+var LOCKOUT_SECONDS = 300;          // ...then locked for ~5 minutes (approved decision)
+var CACHE_FAILS = 'login_fails';
+var CACHE_LOCKED = 'login_locked';
+
+var ACCOUNT_HEADERS = ['username', 'secretHash', 'mood', 'icon', 'music', 'accepted',
+                       'unlocked', 'reply', 'replyTime', 'created'];
+var MEMORIES_HEADERS = ['title', 'note', 'date', 'youtubeId', 'collection', 'order'];
+var FLOW = ['proposal', 'letter', 'memories', 'inbox'];
+
+/** Run this ONCE from the Apps Script editor before deploying. Safe to run again. */
+function setup() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) throw new Error('No Sheet attached. Open this script from the Sheet: Extensions > Apps Script.');
+  ensureSheet_(ss, SHEET_ACCOUNT, ACCOUNT_HEADERS);
+  ensureSheet_(ss, SHEET_MEMORIES, MEMORIES_HEADERS);
+  var props = PropertiesService.getScriptProperties();
+  if (!props.getProperty(PROP_SALT)) props.setProperty(PROP_SALT, randomHex_(32));
+  return 'Setup complete. Tabs "' + SHEET_ACCOUNT + '" and "' + SHEET_MEMORIES + '" are ready and a salt was generated.';
+}
+
+/** Wipes the account so you can test sign-up again. Memories and the salt are left alone. */
+function resetAccount() {
+  var sh = sheet_(SHEET_ACCOUNT);
+  if (sh && sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).clearContent();
+  PropertiesService.getScriptProperties().deleteProperty(PROP_TOKENS);
+  CacheService.getScriptCache().removeAll([CACHE_FAILS, CACHE_LOCKED]);
+  return 'Account cleared. The site will offer sign-up again.';
+}
+
+function ensureSheet_(ss, name, headers) {
+  var sh = ss.getSheetByName(name);
+  if (!sh) sh = ss.insertSheet(name);
+  var row = sh.getRange(1, 1, 1, headers.length);
+  if (String(sh.getRange(1, 1).getValue() || '') !== headers[0]) row.setValues([headers]).setFontWeight('bold');
+  sh.setFrozenRows(1);
+  return sh;
+}
+
+function sheet_(name) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  return ss ? ss.getSheetByName(name) : null;
+}
+
+/* ------------------------------------------------------------------ router */
+
+/**
+ * The site POSTs a text/plain body (a JSON string) so the browser sends no CORS preflight,
+ * which an Apps Script web app cannot answer.
+ */
 function doPost(e) {
+  var res;
   try {
-    const data = parseBody(e);
-    if (data[HONEYPOT_FIELD]) return respond(); // quietly drop suspected bot submissions
-    if (data.type === 'signup') appendSignup(data);
-    else if (data.type === 'reply') appendReply(data);
-    // any other/missing type: ignore, still respond the same way below
+    var body = {};
+    if (e && e.postData && e.postData.contents) {
+      try { body = JSON.parse(e.postData.contents) || {}; } catch (err) { body = {}; }
+    }
+    res = route_(String(body.action || ''), body);
   } catch (err) {
-    // never surface script errors to the caller; the site doesn't read this response anyway
+    res = { ok: false, error: 'server' }; // never leak a stack trace to the caller
   }
-  return respond();
+  return ContentService.createTextOutput(JSON.stringify(res)).setMimeType(ContentService.MimeType.JSON);
 }
 
-// Deliberately no doGet(): visiting the web app URL in a browser returns nothing useful,
-// and there is no endpoint that hands back stored rows.
-function respond() {
-  return ContentService.createTextOutput('ok').setMimeType(ContentService.MimeType.TEXT);
+/** A GET returns nothing useful on purpose; everything meaningful goes through doPost. */
+function doGet() {
+  return ContentService.createTextOutput(JSON.stringify({ ok: false, error: 'invalid' }))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
-function parseBody(e) {
-  // The site posts as text/plain (see script.js) to avoid a CORS preflight, which
-  // Apps Script web apps don't handle. The body is still a JSON string underneath.
-  if (e && e.postData && e.postData.contents) {
-    try { return JSON.parse(e.postData.contents); } catch (err) { return {}; }
+function route_(action, body) {
+  switch (action) {
+    case 'status':       return { ok: true, exists: !!readAccount_() };
+    case 'getMemories':  return getMemories_();            // public, no token
+    case 'signup':       return signup_(body);
+    case 'login':        return login_(body);
+    case 'saveProgress': return saveProgress_(body);
+    case 'saveReply':    return saveReply_(body);
+    case 'getProfile':   return getProfile_(body);
+    default:             return { ok: false, error: 'invalid' }; // unknown actions are ignored
   }
-  return {};
 }
 
-function getResponsesSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(RESPONSES_SHEET);
-  if (!sheet) {
-    sheet = ss.insertSheet(RESPONSES_SHEET);
-    sheet.appendRow(['Timestamp', 'Type', 'Username', 'Mood', 'Icon', 'Music', 'Reply']);
+/* ------------------------------------------------------------------ helpers */
+
+function str_(v, max) { return String(v == null ? '' : v).slice(0, max); }
+function norm_(v) { return str_(v, 200).trim().toLowerCase(); } // forgiving: "Our Word " == "our word"
+
+function randomHex_(bytes) {
+  var out = '';
+  for (var i = 0; i < bytes; i++) out += ('0' + Math.floor(Math.random() * 256).toString(16)).slice(-2);
+  return out + Utilities.getUuid().replace(/-/g, '');
+}
+
+function sha256_(text) {
+  var raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, text, Utilities.Charset.UTF_8);
+  var hex = '';
+  for (var i = 0; i < raw.length; i++) hex += ('0' + (raw[i] & 0xff).toString(16)).slice(-2);
+  return hex;
+}
+
+function salt_() {
+  var s = PropertiesService.getScriptProperties().getProperty(PROP_SALT);
+  if (!s) throw new Error('No salt set. Run setup() once.');
+  return s;
+}
+
+function hashSecret_(secret) { return sha256_(salt_() + ':' + norm_(secret)); }
+
+/** Compare without leaking where two strings first differ. */
+function sameHash_(a, b) {
+  a = String(a || ''); b = String(b || '');
+  if (a.length !== b.length) return false;
+  var diff = 0;
+  for (var i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+function cleanProgress_(p) {
+  var o = {}, i;
+  for (i = 0; i < FLOW.length; i++) o[FLOW[i]] = !!(p && p[FLOW[i]] === true);
+  o.accepted = !!(p && p.accepted === true);
+  return o;
+}
+
+/* ------------------------------------------------------------------ account row */
+
+function readAccount_() {
+  var sh = sheet_(SHEET_ACCOUNT);
+  if (!sh || sh.getLastRow() < 2) return null;
+  var v = sh.getRange(2, 1, 1, ACCOUNT_HEADERS.length).getValues()[0];
+  if (!String(v[0] || '').trim()) return null;
+  var unlocked = {};
+  try { unlocked = JSON.parse(v[6] || '{}') || {}; } catch (err) { unlocked = {}; }
+  unlocked.accepted = v[5] === true || String(v[5]).toLowerCase() === 'true';
+  return {
+    username: String(v[0]), secretHash: String(v[1]), mood: v[2] === '' ? null : v[2],
+    icon: v[3] === '' ? null : v[3], music: v[4] === '' ? null : v[4],
+    progress: cleanProgress_(unlocked),
+    reply: String(v[7] || '') ? { text: String(v[7]), timestamp: Number(v[8]) || 0 } : null,
+    created: Number(v[9]) || 0
+  };
+}
+
+function writeAccount_(a) {
+  var sh = sheet_(SHEET_ACCOUNT);
+  if (!sh) throw new Error('No "' + SHEET_ACCOUNT + '" tab. Run setup().');
+  sh.getRange(2, 1, 1, ACCOUNT_HEADERS.length).setValues([[
+    a.username, a.secretHash, a.mood == null ? '' : a.mood, a.icon == null ? '' : a.icon,
+    a.music == null ? '' : a.music, a.progress.accepted === true,
+    JSON.stringify(a.progress), a.reply ? a.reply.text : '',
+    a.reply ? a.reply.timestamp : '', a.created || Date.now()
+  ]]);
+}
+
+/** Exactly what the site is allowed to see. The hash is never included. */
+function profileOf_(a) {
+  return {
+    username: a.username, mood: a.mood, iconId: a.icon, musicId: a.music,
+    accepted: a.progress.accepted === true, progress: cleanProgress_(a.progress),
+    reply: a.reply || null
+  };
+}
+
+/* ------------------------------------------------------------------ sessions */
+
+function readTokens_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(PROP_TOKENS);
+  var list = [];
+  try { list = JSON.parse(raw || '[]') || []; } catch (err) { list = []; }
+  var now = Date.now(), live = [];
+  for (var i = 0; i < list.length; i++) if (Number(list[i].exp) > now) live.push(list[i]);
+  return live;
+}
+
+function newToken_() {
+  var token = randomHex_(24);                       // returned once, never stored in the clear
+  var live = readTokens_();
+  live.push({ h: sha256_(token), exp: Date.now() + TOKEN_TTL_MS });
+  if (live.length > MAX_TOKENS) live = live.slice(-MAX_TOKENS);
+  PropertiesService.getScriptProperties().setProperty(PROP_TOKENS, JSON.stringify(live));
+  return token;
+}
+
+function validToken_(token) {
+  if (!token) return false;
+  var want = sha256_(String(token)), live = readTokens_();
+  for (var i = 0; i < live.length; i++) if (sameHash_(live[i].h, want)) return true;
+  return false;
+}
+
+/* ------------------------------------------------------------------ lockout */
+
+function lockedOut_() { return !!CacheService.getScriptCache().get(CACHE_LOCKED); }
+
+function noteFail_() {
+  var cache = CacheService.getScriptCache();
+  var n = Number(cache.get(CACHE_FAILS) || 0) + 1;
+  if (n >= LOCKOUT_TRIES) {
+    cache.put(CACHE_LOCKED, '1', LOCKOUT_SECONDS);
+    cache.remove(CACHE_FAILS);
+  } else {
+    cache.put(CACHE_FAILS, String(n), LOCKOUT_SECONDS);
   }
-  return sheet;
 }
 
-function appendSignup(data) {
-  getResponsesSheet().appendRow([
-    new Date(), 'signup',
-    clean(data.username, MAX_FIELD_LENGTH), clean(data.mood, MAX_FIELD_LENGTH),
-    clean(data.icon, MAX_FIELD_LENGTH), clean(data.music, MAX_FIELD_LENGTH), ''
-  ]);
+function clearFails_() { CacheService.getScriptCache().removeAll([CACHE_FAILS, CACHE_LOCKED]); }
+
+/* ------------------------------------------------------------------ actions */
+
+function signup_(body) {
+  var username = str_(body.username, MAX_USERNAME).trim();
+  var secret = str_(body.secret, MAX_SECRET);
+  if (!username || !norm_(secret)) return { ok: false, error: 'invalid' };
+
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (err) { return { ok: false, error: 'server' }; }
+  try {
+    if (readAccount_()) return { ok: false, error: 'exists' }; // one account only, checked under the lock
+    var acct = {
+      username: username, secretHash: hashSecret_(secret),
+      mood: body.mood == null ? null : str_(body.mood, MAX_FIELD),
+      icon: body.iconId == null ? null : str_(body.iconId, MAX_FIELD),
+      music: body.musicId == null ? null : str_(body.musicId, MAX_FIELD),
+      progress: cleanProgress_({ proposal: true }), reply: null, created: Date.now()
+    };
+    writeAccount_(acct);
+    clearFails_();
+    return { ok: true, token: newToken_(), profile: profileOf_(acct) };
+  } finally { lock.releaseLock(); }
 }
 
-function appendReply(data) {
-  getResponsesSheet().appendRow([
-    new Date(), 'reply',
-    clean(data.username, MAX_FIELD_LENGTH), '', '', '',
-    clean(data.reply, MAX_REPLY_LENGTH)
-  ]);
+function login_(body) {
+  if (lockedOut_()) return { ok: false, error: 'locked' };
+  var acct = readAccount_();
+  var username = str_(body.username, MAX_USERNAME);
+  var secret = str_(body.secret, MAX_SECRET);
+  // One answer for a wrong username, a wrong word, or no account at all: never say which.
+  if (!acct || norm_(username) !== norm_(acct.username) || !sameHash_(acct.secretHash, hashSecret_(secret))) {
+    noteFail_();
+    return { ok: false, error: 'wrong' };
+  }
+  clearFails_();
+  return { ok: true, token: newToken_(), profile: profileOf_(acct) };
 }
 
-function clean(value, maxLength) {
-  return String(value == null ? '' : value).slice(0, maxLength);
+function saveProgress_(body) {
+  if (!validToken_(body.token)) return { ok: false, error: 'auth' };
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (err) { return { ok: false, error: 'server' }; }
+  try {
+    var acct = readAccount_();
+    if (!acct) return { ok: false, error: 'auth' };
+    // Flags only ever turn ON, and only when earned: letter needs accepted, memories/inbox need the reply.
+    var want = cleanProgress_(body.progress), cur = acct.progress;
+    if (want.proposal) cur.proposal = true;
+    if (want.accepted) cur.accepted = true;
+    if (want.letter && cur.accepted) cur.letter = true;
+    if (acct.reply) { if (want.memories) cur.memories = true; if (want.inbox) cur.inbox = true; }
+    writeAccount_(acct);
+    return { ok: true, progress: cleanProgress_(cur) };
+  } finally { lock.releaseLock(); }
+}
+
+function saveReply_(body) {
+  if (!validToken_(body.token)) return { ok: false, error: 'auth' };
+  if (typeof body.text !== 'string') return { ok: false, error: 'invalid' };
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (err) { return { ok: false, error: 'server' }; }
+  try {
+    var acct = readAccount_();
+    if (!acct) return { ok: false, error: 'auth' };
+    acct.reply = { text: str_(body.text, MAX_REPLY), timestamp: Date.now() };
+    acct.progress.memories = true;
+    acct.progress.inbox = true;
+    writeAccount_(acct);
+    return { ok: true, progress: cleanProgress_(acct.progress), reply: acct.reply };
+  } finally { lock.releaseLock(); }
+}
+
+function getProfile_(body) {
+  if (!validToken_(body.token)) return { ok: false, error: 'auth' };
+  var acct = readAccount_();
+  if (!acct) return { ok: false, error: 'auth' };
+  return { ok: true, profile: profileOf_(acct) };
+}
+
+/**
+ * Public on purpose: the clip list is not sensitive and the memories page must work before login.
+ * Returns the same shape clips.json uses, with collections derived from the rows in first-seen order.
+ */
+function getMemories_() {
+  var sh = sheet_(SHEET_MEMORIES);
+  if (!sh || sh.getLastRow() < 2) return { ok: true, source: 'sheet', collections: [], clips: [] };
+  var rows = sh.getRange(2, 1, sh.getLastRow() - 1, MEMORIES_HEADERS.length).getValues();
+  var clips = [], seen = {}, collections = [], i;
+  for (i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    var youtubeId = String(r[3] || '').trim();
+    var title = String(r[0] || '').trim();
+    if (!youtubeId && !title) continue;                       // blank row
+    var collection = String(r[4] || '').trim() || 'all';
+    if (!seen[collection]) { seen[collection] = true; collections.push({ id: collection, title: collection }); }
+    clips.push({
+      id: 'm' + (i + 1), youtubeId: youtubeId, title: title,
+      date: formatDate_(r[2]), caption: String(r[1] || '').trim(),
+      collection: collection, order: Number(r[5]) || (i + 1)
+    });
+  }
+  clips.sort(function (a, b) { return a.order - b.order; });
+  return { ok: true, source: 'sheet', collections: collections, clips: clips };
+}
+
+/** The site wants YYYY-MM-DD; the Sheet may hand back a real Date or free text. */
+function formatDate_(v) {
+  if (v instanceof Date && !isNaN(v.getTime())) {
+    return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  }
+  return String(v || '').trim();
 }

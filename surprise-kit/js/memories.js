@@ -1,5 +1,5 @@
 // Memories page (memories.html): guard, wording, clip inventory (collection tabs + slots) and the video player.
-// Classic script; needs js/config.js and js/common.js first (CONFIG and MEMORIES_CSV_URL are config.js globals).
+// Classic script; needs js/config.js and js/common.js first (CONFIG is a config.js global).
 // All clip data comes from the Memories CSV or clips.json; nothing is hard-coded here.
 (function () {
   const S = window.Surprise;
@@ -160,75 +160,13 @@
       }
     }
 
-    // ---- Memories CSV (Phase 3 P9): dependency-free, quote-aware CSV parser ----
-    // Handles what Google Sheets' published CSV export actually produces: a header row,
-    // commas inside quoted fields, an embedded "" as an escaped quote, and \r\n or \n line
-    // endings. Not a full RFC4180 implementation - just enough for that one export shape.
-    function parseCSV(text) {
-      const rows = [];
-      let row = [], field = "", inQuotes = false;
-      for (let i = 0; i < text.length; i++) {
-        const ch = text[i];
-        if (inQuotes) {
-          if (ch === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQuotes = false; }
-          else field += ch;
-        } else if (ch === '"') inQuotes = true;
-        else if (ch === ",") { row.push(field); field = ""; }
-        else if (ch === "\r") { /* nothing - the \n that follows (if any) does the row push */ }
-        else if (ch === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
-        else field += ch;
-      }
-      if (field !== "" || row.length) { row.push(field); rows.push(row); } // last line with no trailing newline
-      return rows;
-    }
-
-    // Turns parsed CSV rows (header: title, note, date, youtubeId, collection - backend/SETUP.md
-    // step 1.3) into the same {collections, clips} shape clips.json already provides, so
-    // checkClips/buildTabs/showTab don't need to know which source they're looking at.
-    // There's no separate "collections" sheet - they're derived here from the distinct
-    // `collection` values present, in first-seen order; buildTabs only needs {id, title} and
-    // already treats `icon` as optional, so these simply have no icon.
-    // id scheme: "m" + <row's 1-based position among the data rows, header excluded>, e.g. the
-    // first Memories row becomes "m1". That ties id to row position (stable across reloads of
-    // the same sheet) rather than to a counter of kept rows, matching clips.json's "id unique"
-    // rule without the sheet needing an id column of its own.
-    function memoriesFromCSV(text) {
-      const rows = parseCSV(text).filter(r => !(r.length === 1 && r[0].trim() === "")); // drop blank lines
-      if (rows.length < 2) return null; // header only, or nothing at all - doesn't look right
-      const header = rows[0].map(h => h.trim().toLowerCase());
-      const idx = name => header.indexOf(name);
-      const iTitle = idx("title"), iNote = idx("note"), iDate = idx("date"), iYouTube = idx("youtubeid"), iCollection = idx("collection");
-      if (iTitle < 0 || iYouTube < 0 || iCollection < 0) return null; // not the Memories tab's header
-
-      const collections = [], seen = new Set(), clips = [];
-      for (let r = 1; r < rows.length; r++) {
-        const row = rows[r];
-        const title = (row[iTitle] || "").trim(), youtubeId = (row[iYouTube] || "").trim(), collection = (row[iCollection] || "").trim();
-        if (!title && !youtubeId) continue; // blank row
-        if (!seen.has(collection)) { seen.add(collection); collections.push({ id: collection, title: collection }); }
-        clips.push({
-          id: "m" + r, youtubeId, title, collection,
-          date: iDate >= 0 ? (row[iDate] || "").trim() : "",
-          caption: iNote >= 0 ? (row[iNote] || "").trim() : ""
-        });
-      }
-      return clips.length ? { collections, clips } : null; // zero usable rows counts as a failure
-    }
-
-    function loadMemoriesCSV() {
-      if (!MEMORIES_CSV_URL) return Promise.reject(new Error("MEMORIES_CSV_URL is blank"));
-      return fetch(MEMORIES_CSV_URL)
-        .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
-        .then(text => { const data = memoriesFromCSV(text); if (!data) throw new Error("Memories CSV had no usable rows"); return data; });
-    }
-
     function loadClipsJSON() {
       return fetch("clips.json").then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
     }
 
-    // The api is the one door for data (Phase B swaps its driver). Order: the Memories CSV if a URL is set, then
-    // Api.getMemories() (the local driver serves clips.json), then a direct clips.json read as the last resort.
-    // Any failure falls through to the next, with the same checkClips hygiene and the same final .catch/error message.
+    // The api is the one door for data (Phase B swaps its driver): Api.getMemories() first - the Sheet's Memories
+    // tab once a Web app URL is set, clips.json while it is blank - then a direct clips.json read as the last
+    // resort. The separate published-CSV path was retired with Phase B; the Sheet now arrives through the api.
     function loadFromApi() {
       if (!S.Api) return Promise.reject(new Error("api.js not loaded"));
       return S.Api.getMemories().then(r => {
@@ -237,9 +175,7 @@
         checkClips(data, r.source || "api"); return data;
       });
     }
-    loadMemoriesCSV()
-      .then(data => { checkClips(data, "Memories CSV"); return data; })
-      .catch(() => loadFromApi())
+    loadFromApi()
       .catch(err => {
         console.warn("surprise-kit: memories api unavailable, falling back to clips.json", err);
         return loadClipsJSON().then(data => { checkClips(data); return data; });

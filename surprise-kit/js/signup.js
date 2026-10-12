@@ -130,12 +130,15 @@
         return; // nothing saved, no music, stays on the card
       }
       submitting = true;
+      const btn = $("su-continue");
+      btn.disabled = true; btn.setAttribute("aria-busy", "true"); btn.textContent = CONFIG.signup.loading; // no double-submit; she sees it working
       const username = $("su-username").value.trim();
       const answers = { username, secret: $("su-secret").value, mood: selectedMood, iconId: selectedIconId, musicId: selectedTrackId };
       Api.signup(answers).then(r => {
         if (!r.ok) {
           if (r.error === "exists") { location.replace("login.html"); return; } // an account appeared meanwhile: she logs in instead
           submitting = false;
+          btn.disabled = false; btn.removeAttribute("aria-busy"); btn.textContent = CONFIG.signup.continue; // everything she typed stays as it was
           showMsg(CONFIG.signup.errors[r.error] || CONFIG.signup.errors.network);
           return;
         }

@@ -3,7 +3,8 @@
 //   { ok: true, ... }  or  { ok: false, error: "<code>" }
 // so pages never need try/catch. Error codes: "invalid" (missing/bad input), "exists" (sign-up refused: an account
 // is already there), "wrong" (username/secret did not match; deliberately the same answer for both), "auth" (no
-// valid session), "network" (the server could not be reached or understood).
+// valid session), "locked" (remote only: too many wrong logins, paused a few minutes), "network" (the server could not be
+// reached or understood).
 //
 // Phase A runs on the LOCAL driver (localStorage stands in for the server). Phase B adds a REMOTE driver (Google
 // Apps Script) behind the same call shapes, so no page changes.
@@ -132,21 +133,89 @@
     };
   }
 
-  // ---- remote driver: Phase B (Google Apps Script) fills this in. Until then it only answers "network", so a page
-  // that has a URL configured fails visibly and gently instead of quietly using local data.
-  function makeRemoteDriver() {
-    const down = () => fail("network");
-    return { status: down, signup: down, login: down, saveProgress: down, saveReply: down, getProfile: down, getMemories: down };
+  // ---- remote driver: Google Apps Script (backend/Code.gs, set up by docs/backend-setup.md). One POST per call, body a
+  // JSON string sent as text/plain so the browser makes no CORS preflight (an Apps Script web app cannot answer one).
+  // fetch follows Apps Script's 302 to script.googleusercontent.com by itself; the response is read normally (no no-cors).
+  // Policy, in one place:
+  //   - every failure to get a usable JSON answer (offline, timeout, HTML error page, unknown/"server" code) is "network";
+  //   - ATTEMPT_MS bounds each attempt (cold starts take a few seconds), TOTAL_MS bounds a whole call;
+  //   - idempotent calls retry quietly up to RETRIES more times with a short backoff, never past TOTAL_MS: status,
+  //     getMemories, getProfile (reads), saveProgress (flags only turn ON), saveReply (replaces with the same text), login
+  //     (a repeat just checks the same word again);
+  //   - signup is NEVER auto-retried: a lost answer could hide a created account. If she tries again the server answers
+  //     "exists" (it allows exactly one account) and signup.js sends her to login, so no second account is possible.
+  function makeRemoteDriver(endpoint) {
+    const ATTEMPT_MS = 18000, TOTAL_MS = 30000, RETRIES = 2, BACKOFF_MS = [600, 1500];
+    const KNOWN = { invalid: 1, exists: 1, wrong: 1, auth: 1, locked: 1 };
+    const wait = ms => new Promise(res => setTimeout(res, ms));
+
+    function once(payload, ms) {
+      let timer, ctl = null;
+      try { ctl = typeof AbortController === "function" ? new AbortController() : null; } catch (e) { ctl = null; }
+      const timeout = new Promise(res => { timer = setTimeout(() => { try { if (ctl) ctl.abort(); } catch (e) { /* ignore */ } res(null); }, ms); });
+      const req = fetch(endpoint, {
+        method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload), signal: ctl ? ctl.signal : undefined, credentials: "omit"
+      }).then(r => r.text()).then(t => { try { return JSON.parse(t); } catch (e) { return null; } }) // HTML error page -> null
+        .catch(() => null);
+      return Promise.race([req, timeout]).then(j => { clearTimeout(timer); return j; });
+    }
+    // -> { ok:true, ... } | { ok:false, error } with a client error code
+    function call(payload, retry) {
+      const started = Date.now();
+      const attempt = n => once(payload, Math.max(1000, Math.min(ATTEMPT_MS, TOTAL_MS - (Date.now() - started)))).then(j => {
+        if (j && typeof j === "object" && j.ok === true) return j;
+        const code = j && typeof j === "object" && KNOWN[j.error] ? j.error : "network"; // "server", junk, no answer
+        if (code !== "network") return { ok: false, error: code };
+        const delay = BACKOFF_MS[n] || 1500;
+        if (!retry || n >= RETRIES || Date.now() - started + delay >= TOTAL_MS) return { ok: false, error: "network" };
+        return wait(delay).then(() => attempt(n + 1));
+      });
+      return attempt(0);
+    }
+    return {
+      status() { return call({ action: "status" }, true); },
+      signup(d) { d = d || {}; return call({ action: "signup", username: d.username, secret: d.secret, mood: d.mood, iconId: d.iconId, musicId: d.musicId }, false); },
+      login(username, secret) { return call({ action: "login", username, secret }, true); },
+      saveProgress(token, progress) { return call({ action: "saveProgress", token, progress }, true); },
+      saveReply(token, text) { return call({ action: "saveReply", token, text }, true); },
+      getProfile(token) { return call({ action: "getProfile", token }, true); },
+      getMemories() { return call({ action: "getMemories" }, true); }
+    };
   }
 
   const url = String(S.APPS_SCRIPT_URL || "").trim();
-  const driver = url ? makeRemoteDriver() : makeLocalDriver(); // the ONLY place a driver is chosen
+  const driver = url ? makeRemoteDriver(url) : makeLocalDriver(); // the ONLY place a driver is chosen
   const tokenNow = () => { const s = Session.get(); return s && s.token ? s.token : null; };
   // keep this device's Progress in step with the account: flags only ever turn on, never off
   function mergeProgress(remote) {
     const local = Progress.read(), r = cleanProgress(remote), m = {};
     FLOW.concat("accepted").forEach(k => { m[k] = local[k] || r[k]; });
     Progress.apply(m);
+  }
+  // A dead session (expired, or the account was reset server-side): forget it and send her to login instead of leaving her
+  // on a page whose saves silently fail. Remote only (the local driver's tokens cannot go stale). Never fires on the
+  // login / sign-up pages themselves. Her device copies (progress, reply) are kept and re-sent after she logs in again.
+  const onAuthPage = () => /(^|\/)(login|index)(\.html?)?$|\/$/.test(location.pathname);
+  function authLost(r) {
+    if (url && r && r.ok === false && r.error === "auth") {
+      Session.clear();
+      if (!onAuthPage()) location.replace("login.html");
+    }
+    return r;
+  }
+  // after a login on the server: push whatever this device has that the account lacks (a reply or Yes that failed to save
+  // when the session died). Capped so a slow server cannot hold her on the login page.
+  function catchUp(profile) {
+    if (!url) return Promise.resolve();
+    const reply = Store.getJSON(KEYS.reply, null), p = profile || {};
+    let job = Promise.resolve();
+    if (reply && typeof reply.text === "string" && !p.reply) job = driver.saveReply(tokenNow(), reply.text);
+    else {
+      const have = cleanProgress(p.progress), mine = Progress.read();
+      if (FLOW.concat("accepted").some(k => mine[k] && !have[k])) job = driver.saveProgress(tokenNow(), mine);
+    }
+    return Promise.race([job.catch(() => null), new Promise(res => setTimeout(res, 4000))]);
   }
   const guard = fn => { try { return Promise.resolve(fn()).catch(() => ({ ok: false, error: "network" })); } catch (e) { return fail("network"); } };
 
@@ -163,17 +232,18 @@
     // On success the device is logged in and its Progress catches up with the account (so she can be sent to Progress.furthest()).
     login(username, secret) {
       return guard(() => driver.login(username, secret)).then(r => {
-        if (r.ok) { Session.start(r.token); mergeProgress(r.profile && r.profile.progress); Progress.unlock("proposal"); }
-        return r;
+        if (!r.ok) return r;
+        Session.start(r.token); mergeProgress(r.profile && r.profile.progress); Progress.unlock("proposal");
+        return catchUp(r.profile).then(() => r);
       });
     },
     saveProgress(progress) {
-      return guard(() => driver.saveProgress(tokenNow(), progress || Progress.read())).then(r => { if (r.ok) mergeProgress(r.progress); return r; });
+      return guard(() => driver.saveProgress(tokenNow(), progress || Progress.read())).then(authLost).then(r => { if (r.ok) mergeProgress(r.progress); return r; });
     },
     saveReply(text) {
-      return guard(() => driver.saveReply(tokenNow(), text)).then(r => { if (r.ok) mergeProgress(r.progress); return r; });
+      return guard(() => driver.saveReply(tokenNow(), text)).then(authLost).then(r => { if (r.ok) mergeProgress(r.progress); return r; });
     },
-    getProfile() { return guard(() => driver.getProfile(tokenNow())); },
+    getProfile() { return guard(() => driver.getProfile(tokenNow())).then(authLost); },
     getMemories() { return guard(() => driver.getMemories()); },
     // "Not me / start fresh": forget this device's login only (the account itself stays)
     logout() { Session.clear(); return ok({}); }
