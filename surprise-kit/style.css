@@ -401,6 +401,9 @@ html:has(.player[open]){overflow:hidden}
 .notif{position:fixed;top:70px;left:50%;z-index:40;width:max-content;max-width:min(92vw,26rem);
  transform:translate(-50%,calc(-100% - 90px));opacity:0;transition:transform .55s cubic-bezier(.22,.9,.3,1),opacity .35s ease}
 .notif.is-in{transform:translate(-50%,0);opacity:1}
+/* below 900px the header stacks to ~139px, so the default 70px put the toast on top of the nav
+   links and the mute/theme buttons for its whole 4.5s life (QA). Drop it clear of the taller bar. */
+@media (max-width:900px){.notif{top:150px}}
 .notif-btn{display:flex;align-items:center;gap:.8rem;width:100%;margin:0;padding:.7rem 1.1rem .7rem .8rem;border:1px solid var(--env-edge);border-radius:1.1rem;
  font:600 1rem/1.3 'Quicksand',system-ui,sans-serif;text-align:left;color:var(--ink);background:var(--paper);cursor:pointer;
  box-shadow:0 14px 30px -8px rgba(var(--sh),.6),0 3px 8px rgba(var(--sh),.28)}
@@ -558,6 +561,9 @@ body.proposal{--pr-glow:20%}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) body.proposal{--pr-glow:80%}}
 .pr-stage{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;overflow-y:auto;box-sizing:border-box;
  padding:max(64px,env(safe-area-inset-top,0px)) 5vw calc(env(safe-area-inset-bottom,0px) + 40px)}
+/* the burst hearts fly well past the stage, which made a scrollbar flash for the length of the
+   celebration and shunted the layout 15px sideways (QA). They're decorative, so clip them instead. */
+.pr-stage:has(.is-celebrating){overflow:hidden}
 @supports (align-items:safe center){.pr-stage{align-items:safe center;justify-content:safe center}}
 /* soft glow behind the words: --glow softened further so the cream lines never lose contrast against it; slow breathing */
 .pr-stage::before{content:"";position:fixed;left:50%;top:44%;width:min(1200px,110vw);height:min(760px,82vh);transform:translate(-50%,-50%);pointer-events:none;

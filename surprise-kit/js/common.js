@@ -43,6 +43,12 @@
     return "surprise-kit: cleared (theme kept). Reload the page.";
   };
   if (hasResetFlag()) { clearAll(); stripResetFlag(); }
+  // Typing #reset while already on that page is a hash change, not a navigation, so nothing above
+  // re-runs and it looks broken (QA). Catch it and reload so the flag is honoured from the top.
+  addEventListener("hashchange", () => {
+    if (!hasResetFlag()) return;
+    resetting = true; clearAll(); stripResetFlag(); location.reload();
+  });
 
   // ---- schema migration: the build before Phase 5 has no secret word and an old `yes:true` that would skip the
   // proposal, so it cannot be converted. On a missing/older schema value, wipe the old keys ONCE (keeping `theme` and
