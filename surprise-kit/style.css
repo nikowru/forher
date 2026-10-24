@@ -7,6 +7,9 @@
  --slot:#86d3ce;--slot-ink:#5c4130;--slot-muted:#5c4130;--slot-edge:#22575e;--tab:#beebe3;--tab-ink:#22575e;--tab-on:#22575e;--tab-on-ink:#f0edda;--accent:#2fd5d6;--bevel:rgba(240,237,218,.55);
  /* contrast helpers (measured in T9): focus rings per surface, paper labels for small text on the teal, lighter vignette */
  --ring-page:#22575e;--ring-paper:#22575e;--ring-in:#f0edda;--ring-out:#22575e;--label:#f0edda;--label-sh:0 2px 6px rgba(var(--sh),.25);--theme-bg:#beebe3;--vig:.22;
+ /* frosted-glass floating controls: fill/edge/sheen per theme so the icon never lands on its own colour */
+ --glass:color-mix(in srgb,var(--paper) 62%,transparent);--glass-hi:color-mix(in srgb,var(--paper) 88%,transparent);
+ --glass-edge:color-mix(in srgb,var(--paper) 90%,transparent);--glass-sheen:color-mix(in srgb,var(--paper) 75%,transparent);
  /* shared by both themes: red wax seal, envelope edges, video screen, player backdrop */
  --seal-hi:#e0616b;--seal:#c4444f;--seal-lo:#8d2634;--seal-shadow:rgba(80,20,30,.45);--seal-shade:rgba(60,10,20,.4);--seal-gloss:rgba(255,180,180,.4);
  --seal-ring:rgba(255,235,225,.75);--seal-rim:rgba(255,190,190,.35);--seal-mark:rgba(140,30,45,.35);--seal-line:rgba(255,205,205,.8);
@@ -19,13 +22,13 @@
  --el:#6b7280;--eb:#d1d5db;--btn:#374151;--btn-text:#f3f4f6;--speck:#d1d5db;--petal:#d1d5db;
  --fl-head:#d1d5db;--fl-stem:#6b7280;--fl-tape:#6b7280;--bk1:#6b7280;--bk2:#d1d5db;--bk3:#374151;
  --slot:color-mix(in srgb,#374151,#6b7280 35%);--slot-ink:#f3f4f6;--slot-muted:#d1d5db;--slot-edge:#6b7280;--tab:transparent;--tab-ink:#f3f4f6;--tab-on:#f3f4f6;--tab-on-ink:#374151;--accent:#d1d5db;--bevel:rgba(243,244,246,.12);--backdrop:rgba(17,24,39,.85);
- --ring-page:#f3f4f6;--ring-paper:#111827;--ring-in:#f3f4f6;--ring-out:#111827;--label:transparent;--label-sh:none;--theme-bg:transparent;--vig:.38;color-scheme:dark}
+ --ring-page:#f3f4f6;--ring-paper:#111827;--ring-in:#f3f4f6;--ring-out:#111827;--label:transparent;--label-sh:none;--theme-bg:transparent;--vig:.38;--glass:color-mix(in srgb,var(--paper) 15%,transparent);--glass-hi:color-mix(in srgb,var(--paper) 26%,transparent);--glass-edge:color-mix(in srgb,var(--paper) 38%,transparent);--glass-sheen:color-mix(in srgb,var(--paper) 30%,transparent);color-scheme:dark}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#374151;--bg-hi:color-mix(in srgb,#374151,#6b7280 30%);--head:#f3f4f6;--hint:#d1d5db;--ink:#374151;--paper:#f3f4f6;--rule:rgba(55,65,81,.2);
  --sh:17,24,39;--glow:rgba(209,213,219,.16);--env1:#d1d5db;--env2:#6b7280;--flap1:#d1d5db;--flap2:#9ca3af;--flap3:#6b7280;
  --el:#6b7280;--eb:#d1d5db;--btn:#374151;--btn-text:#f3f4f6;--speck:#d1d5db;--petal:#d1d5db;
  --fl-head:#d1d5db;--fl-stem:#6b7280;--fl-tape:#6b7280;--bk1:#6b7280;--bk2:#d1d5db;--bk3:#374151;
  --slot:color-mix(in srgb,#374151,#6b7280 35%);--slot-ink:#f3f4f6;--slot-muted:#d1d5db;--slot-edge:#6b7280;--tab:transparent;--tab-ink:#f3f4f6;--tab-on:#f3f4f6;--tab-on-ink:#374151;--accent:#d1d5db;--bevel:rgba(243,244,246,.12);--backdrop:rgba(17,24,39,.85);
- --ring-page:#f3f4f6;--ring-paper:#111827;--ring-in:#f3f4f6;--ring-out:#111827;--label:transparent;--label-sh:none;--theme-bg:transparent;--vig:.38;color-scheme:dark}}
+ --ring-page:#f3f4f6;--ring-paper:#111827;--ring-in:#f3f4f6;--ring-out:#111827;--label:transparent;--label-sh:none;--theme-bg:transparent;--vig:.38;--glass:color-mix(in srgb,var(--paper) 15%,transparent);--glass-hi:color-mix(in srgb,var(--paper) 26%,transparent);--glass-edge:color-mix(in srgb,var(--paper) 38%,transparent);--glass-sheen:color-mix(in srgb,var(--paper) 30%,transparent);color-scheme:dark}}
 html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;height:100%;background:radial-gradient(ellipse at 50% 35%,var(--bg-hi),var(--bg) 70%),var(--bg);overflow:hidden;color:var(--ink);font-family:'Cormorant Garamond',Georgia,serif}
 /* paper grain + vignette */
@@ -217,11 +220,25 @@ html:has(.player[open]){overflow:hidden}
 /* z-index:55 (above .signup's 50, Phase 3.1 S1): the sign-up overlay used to bury this
    button even though it's present in the DOM on every screen including sign-up - this is
    the only change needed to make it visible/clickable there again, same top-right spot. */
-.theme{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:16px;z-index:55;width:42px;height:42px;border-radius:50%;border:1.5px solid var(--head);background:var(--theme-bg);color:var(--head);font-size:1.25rem;line-height:1;cursor:pointer}
-.theme:hover{background:rgba(var(--sh),.15)}
-/* mute control (Phase 3 P4): same fixed-toolbar treatment as .theme, reusing its vars - no new colors */
-.mute{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:66px;z-index:55;width:42px;height:42px;border-radius:50%;border:1.5px solid var(--head);background:var(--theme-bg);color:var(--head);font-size:1.1rem;line-height:1;cursor:pointer}
-.mute:hover{background:rgba(var(--sh),.15)}
+/* Floating controls, frosted-glass: a translucent pane that picks up the page behind it, a bright
+   top edge for the lit rim, and a soft drop shadow so it reads as sitting above the page.
+   backdrop-filter is progressive - without it the --glass fill alone still looks deliberate. */
+.theme,.mute{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);z-index:55;width:42px;height:42px;
+ display:grid;place-items:center;padding:0;border-radius:50%;cursor:pointer;line-height:1;
+ color:var(--head);border:1px solid var(--glass-edge);
+ /* sheen baked into the background, not a ::before, so it can never paint over the glyph */
+ background:radial-gradient(120% 90% at 28% 12%,var(--glass-sheen),transparent 62%),var(--glass);
+ -webkit-backdrop-filter:blur(12px) saturate(1.4);backdrop-filter:blur(12px) saturate(1.4);
+ box-shadow:inset 0 1px 0 var(--glass-hi),inset 0 -6px 12px -8px rgba(var(--sh),.5),0 6px 16px -6px rgba(var(--sh),.45);
+ transition:transform .18s ease,background .18s ease,box-shadow .18s ease}
+.theme:hover,.mute:hover{background:radial-gradient(120% 90% at 28% 12%,var(--glass-sheen),transparent 62%),var(--glass-hi);transform:translateY(-1px);
+ box-shadow:inset 0 1px 0 var(--glass-hi),inset 0 -6px 12px -8px rgba(var(--sh),.5),0 10px 22px -8px rgba(var(--sh),.55)}
+.theme:active,.mute:active{transform:translateY(0) scale(.96)}
+.theme{right:16px;font-size:1.25rem}
+/* mute control (Phase 3 P4): shares the glass treatment above; only its slot and size differ */
+.mute{right:66px;font-size:1.1rem}
+@media (prefers-reduced-motion:reduce){.theme,.mute{transition:none}
+ .theme:hover,.mute:hover,.theme:active,.mute:active{transform:none}}
 
 /* sign-up gate (Phase 3 P1, reworked Phase 3.1 S1/S2): a wide, centered card with a
    2-column grid above ~800px (username+mood left, icon+music right), single column
