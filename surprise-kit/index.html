@@ -11,54 +11,64 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=Cormorant+Garamond:ital,wght@1,500;1,600&display=swap" rel="stylesheet">
-<!-- Phase 3.1 S2: sign-up-only typography (Dancing Script for .su-title, Quicksand for
-     labels/inputs/buttons/track names) - added alongside the link above, which still serves
-     Pinyon Script/Cormorant Garamond to every other screen; nothing here replaces that link. -->
 <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Quicksand:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<section class="signup" id="signup" aria-labelledby="su-title">
-  <div class="su-card">
-    <h1 class="su-title" id="su-title"></h1>
-    <form class="su-form" id="su-form" novalidate>
-      <div class="su-step" data-step="username">
-        <label class="su-label" for="su-username"></label>
-        <input class="su-input" type="text" id="su-username" name="username" autocomplete="off" maxlength="40">
+<!-- The gate: sign in on one side, an invitation to sign up on the other. The panel slides across
+     to introduce the other side. All wording comes from CONFIG.welcome / CONFIG.login at runtime. -->
+<section class="gate" id="gate" aria-labelledby="wl-title">
+  <div class="gate-card" id="gate-card">
+
+    <div class="gate-form">
+      <h1 class="gate-title" id="wl-title"></h1>
+      <form class="gate-fields" id="lg-form" novalidate>
+        <div class="su-step">
+          <label class="su-label" for="lg-username"></label>
+          <input class="su-input" type="text" id="lg-username" name="username" autocomplete="username" maxlength="60">
+        </div>
+        <div class="su-step">
+          <label class="su-label" for="lg-secret"></label>
+          <input class="su-input" type="text" id="lg-secret" name="secret" autocapitalize="off" spellcheck="false" autocomplete="current-password" maxlength="100">
+        </div>
+        <p class="su-msg" id="lg-msg" role="status" aria-live="polite" hidden></p>
+        <button type="submit" class="su-continue" id="lg-continue"></button>
+        <button type="button" class="gate-link" id="lg-reset"></button>
+        <!-- only shown below the fold on narrow screens, where the sliding panel is stacked instead -->
+        <button type="button" class="gate-link gate-swap" id="wl-to-signup-small"></button>
+      </form>
+    </div>
+
+    <!-- the coloured panel that slides over the form -->
+    <aside class="gate-panel" id="gate-panel" aria-live="polite">
+      <div class="gate-panel-in">
+        <h2 class="gate-panel-title" id="wl-panel-title"></h2>
+        <p class="gate-panel-text" id="wl-panel-text"></p>
+        <a class="gate-cta" id="wl-signup" href="signup.html"></a>
+        <button type="button" class="gate-cta gate-cta-ghost" id="wl-signin" hidden></button>
       </div>
-      <div class="su-step" data-step="secret">
-        <label class="su-label" for="su-secret"></label>
-        <input class="su-input" type="text" id="su-secret" autocapitalize="off" spellcheck="false" name="secret" autocomplete="off" maxlength="60" aria-describedby="su-secret-hint">
-        <p class="su-hint" id="su-secret-hint"></p>
-      </div>
-      <div class="su-step" data-step="mood">
-        <p class="su-label" id="su-mood-label"></p>
-        <div class="su-moods" id="su-moods" role="group" aria-labelledby="su-mood-label"></div>
-      </div>
-      <div class="su-step" data-step="icon">
-        <p class="su-label" id="su-icon-label"></p>
-        <div class="su-icons" id="su-icons" role="group" aria-labelledby="su-icon-label"></div>
-      </div>
-      <div class="su-step" data-step="music">
-        <p class="su-label" id="su-music-label"></p>
-        <ul class="su-tracks" id="su-tracks" role="list"></ul>
-      </div>
-      <div class="su-step su-final" data-step="final">
-        <p class="su-msg" id="su-msg" role="status" aria-live="polite" hidden></p>
-        <button type="submit" class="su-continue" id="su-continue"></button>
-      </div>
-      <div class="su-hp" aria-hidden="true">
-        <label for="su-website">Website</label>
-        <input type="text" id="su-website" name="website" tabindex="-1" autocomplete="off">
-      </div>
-    </form>
+    </aside>
+
   </div>
 </section>
+
+<!-- "not me / start fresh": forgets this device's session only. Same <dialog> pattern as the player. -->
+<dialog class="lg-confirm" id="lg-confirm" aria-labelledby="lg-confirm-title">
+  <div class="lg-confirm-box">
+    <h3 id="lg-confirm-title"></h3>
+    <p id="lg-confirm-text"></p>
+    <div class="lg-confirm-row">
+      <button type="button" class="su-continue" id="lg-confirm-no"></button>
+      <button type="button" class="gate-link" id="lg-confirm-yes"></button>
+    </div>
+  </div>
+</dialog>
 <div id="air" aria-hidden="true"></div>
 <button class="theme" id="theme"></button>
+
 <script src="js/config.js" defer></script>
 <script src="js/common.js" defer></script>
 <script src="js/api.js" defer></script>
-<script src="js/signup.js" defer></script>
+<script src="js/welcome.js" defer></script>
 </body>
 </html>

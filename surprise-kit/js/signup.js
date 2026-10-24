@@ -1,4 +1,4 @@
-// Sign-up page (index.html): chooses sign-up vs login, fills the card's wording, mood/icon/track pickers, gentle
+// Sign-up page (signup.html): refuses a second account, fills the card's wording, mood/icon/track pickers, gentle
 // validation and the Continue submit. The dodging No button now lives in js/nodge.js (used by proposal.html).
 // Classic script; needs js/config.js, js/common.js and js/api.js first. Guarded: does nothing off the sign-up page.
 (function () {
@@ -17,7 +17,7 @@
   signupSection.hidden = true;
   Api.status().then(r => {
     if (r.ok && r.exists) {
-      const onward = S.Session.isActive() && S.Progress.furthest() ? S.Guard.onward() : "login.html";
+      const onward = S.Session.isActive() && S.Progress.furthest() ? S.Guard.onward() : "index.html";
       location.replace(onward);
       return;
     }
@@ -203,7 +203,7 @@
       const answers = { username, secret: $("su-secret").value, mood: selectedMood, iconId: selectedIconId, musicId: selectedTrackId };
       Api.signup(answers).then(r => {
         if (!r.ok) {
-          if (r.error === "exists") { location.replace("login.html"); return; } // an account appeared meanwhile: she logs in instead
+          if (r.error === "exists") { location.replace("index.html"); return; } // an account appeared meanwhile: she logs in instead
           submitting = false;
           btn.disabled = false; btn.removeAttribute("aria-busy"); btn.textContent = CONFIG.signup.continue; // everything she typed stays as it was
           showMsg(CONFIG.signup.errors[r.error] || CONFIG.signup.errors.network);

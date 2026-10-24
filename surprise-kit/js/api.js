@@ -200,7 +200,7 @@
   function authLost(r) {
     if (url && r && r.ok === false && r.error === "auth") {
       Session.clear();
-      if (!onAuthPage()) location.replace("login.html");
+      if (!onAuthPage()) location.replace("index.html");
     }
     return r;
   }

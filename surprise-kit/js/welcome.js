@@ -1,30 +1,36 @@
-// Login page (login.html): wording, gentle validation, Api.login, "not me / start fresh".
-// Classic script; needs js/config.js, js/common.js and js/api.js first. Guarded: does nothing off the login page.
+// The gate (index.html): sign in on one side, an invitation to sign up on the other.
+// Classic script; needs js/config.js, js/common.js and js/api.js first. Does nothing off this page.
+//
+// Only one account can ever exist, so the panel has two faces: an invitation while nobody has
+// signed up, and a warm nudge back to signing in once someone has. Which one it shows comes from
+// Api.status(), not from this device's storage, so a brand-new device still gets the right face.
 (function () {
   const S = window.Surprise;
   if (!S || !S.Store || !S.Chrome || !S.Api) return;
   const { Api, Music, Session, Progress, Guard, CONFIG } = S;
-  const L = CONFIG.login;
+  const L = CONFIG.login, W = CONFIG.welcome;
   const $ = id => document.getElementById(id);
-  const section = $("login");
-  if (!section || !$("lg-form") || !$("lg-username") || !$("lg-secret") || !$("lg-msg") || !$("lg-continue")) return;
+  const gate = $("gate");
+  if (!gate || !$("lg-form") || !$("lg-username") || !$("lg-secret") || !$("lg-msg") || !$("lg-continue")) return;
 
-  // Already signed in on this device with progress -> straight on. (Not Guard.target("login"): its "no local account
-  // -> index.html" rule would loop with the real server, where a new device has no local account but one exists.)
-  // Hidden until we know where she belongs, so nothing flashes.
-  section.hidden = true;
+  // Already signed in on this device and part-way through -> straight on, no flash of the gate.
+  gate.hidden = true;
   if (Session.isActive() && Progress.furthest()) { location.replace(Guard.onward()); return; }
-  Api.status().then(r => {
-    if (r.ok && !r.exists) { location.replace("index.html"); return; } // nobody has signed up yet
-    section.hidden = false;
-    start();
-  });
 
-  function start() {
-    document.title = L.title;
-    const setText = (id, t) => { const el = $(id); if (el) el.textContent = t; };
+  fillWording();
+  // The form is useful either way, so show the card immediately and let the panel settle once the
+  // server answers. A slow backend then costs her nothing: she can already start typing.
+  gate.hidden = false;
+  requestAnimationFrame(() => gate.classList.add("is-in"));
+  Api.status().then(r => setPanel(!!(r && r.ok && r.exists)));
+  start();
+
+  function setText(id, t) { const el = $(id); if (el) el.textContent = t; }
+
+  function fillWording() {
+    document.title = W.title;
     const themeBtn = $("theme"); if (themeBtn) themeBtn.setAttribute("aria-label", CONFIG.labels.theme);
-    setText("lg-title", L.title);
+    setText("wl-title", W.title);
     const lab = (id, t) => { const el = document.querySelector('label[for="' + id + '"]'); if (el) el.textContent = t; };
     lab("lg-username", L.usernameLabel); lab("lg-secret", L.secretLabel);
     setText("lg-continue", L.continue);
@@ -33,7 +39,23 @@
     setText("lg-confirm-text", L.confirm.text);
     setText("lg-confirm-yes", L.confirm.yes);
     setText("lg-confirm-no", L.confirm.no);
+  }
 
+  // `taken` = an account already exists, so sign-up is closed and the panel points her at signing in.
+  function setPanel(taken) {
+    setText("wl-panel-title", taken ? W.takenTitle : W.panelTitle);
+    setText("wl-panel-text", taken ? W.takenText : W.panelText);
+    setText("wl-signup", W.signUp);
+    setText("wl-signin", W.signIn);
+    setText("wl-to-signup-small", W.toSignUpSmall);
+    const up = $("wl-signup"), inBtn = $("wl-signin"), small = $("wl-to-signup-small");
+    if (up) up.hidden = taken;          // an <a> to signup.html
+    if (small) small.hidden = taken;    // the stacked-layout twin of the same link
+    if (inBtn) inBtn.hidden = !taken;
+    gate.classList.toggle("is-taken", taken);
+  }
+
+  function start() {
     const username = $("lg-username"), secret = $("lg-secret"), msg = $("lg-msg");
     const showMsg = t => { msg.textContent = t; msg.hidden = false; };
     const clearMsg = () => { if (!msg.hidden) { msg.hidden = true; msg.textContent = ""; } };
@@ -42,6 +64,14 @@
     const mark = el => { unmark(); const s = stepOf(el); if (s) s.classList.add("su-missing"); };
     username.addEventListener("input", () => { clearMsg(); unmark(); });
     secret.addEventListener("input", () => { clearMsg(); unmark(); });
+
+    // "sign in instead" (shown when the account is taken): draw the eye to the form rather than navigate
+    const inBtn = $("wl-signin");
+    if (inBtn) inBtn.addEventListener("click", () => {
+      gate.classList.add("nudge-form");
+      setTimeout(() => gate.classList.remove("nudge-form"), 700);
+      username.focus();
+    });
 
     let busy = false;
     $("lg-form").addEventListener("submit", e => {
@@ -77,6 +107,7 @@
     // ---- "not me / start fresh": confirm, then forget THIS DEVICE's session only (the account stays) ----
     // <dialog> gives Esc-to-close, a focus trap and an inert page behind it; focus goes in on open and back on close.
     const dlg = $("lg-confirm"), resetBtn = $("lg-reset");
+    if (!dlg || !resetBtn) return;
     resetBtn.addEventListener("click", () => {
       if (typeof dlg.showModal !== "function") return;
       if (!dlg.open) { dlg.returnValue = ""; dlg.showModal(); $("lg-confirm-no").focus(); } // the safe choice has focus first

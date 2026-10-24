@@ -115,6 +115,19 @@ const CONFIG = {
     },
     labels: { pages: "Pages", inbox: "Inbox", inboxNew: "Inbox, 1 new", theme: "Switch theme" }
   },
+  // The gate (index.html): the sliding card she lands on. The panel invites her to sign up the
+  // first time; once her account exists it turns into a warm nudge back to signing in instead.
+  welcome: {
+    title: "Welcome back",            // heading over the sign-in fields
+    panelTitle: "Hello you",          // the coloured panel, before she has an account
+    panelText: "Made for one person only. Come in and start.",
+    signUp: "Sign up",                // the panel's button -> signup.html
+    toSignUpSmall: "No account yet? Sign up",   // same thing, for narrow screens where the panel stacks
+    // shown on the panel once an account already exists (only one can)
+    takenTitle: "Already yours",
+    takenText: "You have your place here. Sign in and pick up where you left off.",
+    signIn: "Sign in instead"
+  },
   // sign-up card wording (Phase 3 section 4.2); edit freely, same CONFIG convention as the rest of the page
   signup: {
     title: "Exclusively for my baby/aki",
