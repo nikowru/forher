@@ -248,7 +248,7 @@ html:has(.player[open]){overflow:hidden}
  padding:max(20px,env(safe-area-inset-top,0px)) 16px calc(env(safe-area-inset-bottom,0px) + 20px);
  background:radial-gradient(ellipse at 50% 35%,var(--bg-hi),var(--bg) 70%),var(--bg)}
 @supports (align-items:safe center){.signup{align-items:safe center;justify-content:safe center}}
-.su-card{width:min(960px,94vw);max-width:1000px;box-sizing:border-box;margin:auto;padding:clamp(1.4rem,3vw,2.2rem) clamp(1.3rem,4vw,2.6rem);
+.su-card{width:min(1120px,96vw);max-width:1160px;box-sizing:border-box;margin:auto;padding:clamp(1.4rem,3vw,2.2rem) clamp(1.3rem,4vw,2.6rem);
  display:flex;flex-direction:column;gap:1rem;border-radius:22px;
  /* a faint sheen down the card so the paper catches light rather than sitting flat */
  background:linear-gradient(180deg,color-mix(in srgb,var(--paper) 100%,transparent),var(--paper) 42%),var(--paper);
@@ -692,13 +692,13 @@ body.proposal{--pr-glow:20%}
  100%{opacity:0;transform:translate(calc(cos(var(--a))*var(--d)),calc(sin(var(--a))*var(--d) + 2.5em)) scale(var(--s)) rotate(150deg)}}
 /* drifting hearts: Air.init() (js/common.js, untouched) already makes 18 <span>s in #air; a page-scoped selector restyles them
    as hearts - no JS change, no duplicate particles. !important is only there to beat Air's inline width/height/duration. */
-.proposal{--heart:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 21.2C6 16.6 2.2 13 2.2 8.8 2.2 5.9 4.4 3.8 7.1 3.8c2 0 3.7 1.1 4.9 3 1.2-1.9 2.9-3 4.9-3 2.7 0 4.9 2.1 4.9 5 0 4.2-3.8 7.8-9.8 12.4z'/></svg>") center/contain no-repeat}
-.proposal #air span,.proposal #air span.pt{--hs:14px;width:var(--hs)!important;height:var(--hs)!important;border-radius:0;-webkit-mask:var(--heart);mask:var(--heart);background:var(--petal);
+.proposal,.hearts{--heart:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 21.2C6 16.6 2.2 13 2.2 8.8 2.2 5.9 4.4 3.8 7.1 3.8c2 0 3.7 1.1 4.9 3 1.2-1.9 2.9-3 4.9-3 2.7 0 4.9 2.1 4.9 5 0 4.2-3.8 7.8-9.8 12.4z'/></svg>") center/contain no-repeat}
+.proposal #air span,.proposal #air span.pt,.hearts #air span,.hearts #air span.pt{--hs:14px;width:var(--hs)!important;height:var(--hs)!important;border-radius:0;-webkit-mask:var(--heart);mask:var(--heart);background:var(--petal);
  animation-name:pr-drift;animation-duration:44s!important;animation-timing-function:linear}
-.proposal #air span:nth-child(3n){--hs:22px;animation-duration:58s!important;background:var(--speck)}
-.proposal #air span:nth-child(3n+1){--hs:10px;animation-duration:36s!important}
-.proposal #air span:nth-child(4n+2){background:var(--accent)}
-.proposal #air span:nth-child(5n){--hs:30px;animation-duration:70s!important}
+.proposal #air span:nth-child(3n),.hearts #air span:nth-child(3n){--hs:22px;animation-duration:58s!important;background:var(--speck)}
+.proposal #air span:nth-child(3n+1),.hearts #air span:nth-child(3n+1){--hs:10px;animation-duration:36s!important}
+.proposal #air span:nth-child(4n+2),.hearts #air span:nth-child(4n+2){background:var(--accent)}
+.proposal #air span:nth-child(5n),.hearts #air span:nth-child(5n){--hs:30px;animation-duration:70s!important}
 @keyframes pr-drift{0%{transform:translate3d(0,10vh,0) rotate(-12deg);opacity:0}8%{opacity:.5}25%{transform:translate3d(calc(var(--dx)*.4),-28vh,0) rotate(10deg)}
  50%{transform:translate3d(calc(var(--dx)*-.2),-62vh,0) rotate(-10deg)}75%{transform:translate3d(calc(var(--dx)*.6),-90vh,0) rotate(12deg)}92%{opacity:.4}100%{transform:translate3d(var(--dx),-118vh,0) rotate(-6deg);opacity:0}}
 /* reduced motion: the global rule already stops every animation/transition and hides #air. Here: delays go too, the Yes keeps its
@@ -786,3 +786,8 @@ body.proposal{--pr-glow:20%}
   .gate.nudge-form .gate-form{animation:none}
   .gate-cta{transition:none}
   .gate-cta:hover,.gate-cta:active{transform:none}}
+
+/* Hearts behind the card: .signup/.gate paint a full-screen background at z-index 50, which would
+   bury #air (z-index 10). <body> already carries the identical gradient, so on these pages the
+   container goes transparent and the drifting hearts show through around the card. */
+.hearts .signup,.hearts .gate{background:transparent}
