@@ -59,20 +59,87 @@
       });
     }
 
+    // Her uploaded photo, if she picks one: a square data URL kept under its own key so the
+    // account row stays small. CUSTOM_ICON is the id saved in place of one of the ICONS ids.
+    const CUSTOM_ICON = "custom";
+    const avatarKey = () => S.KEYS.avatar || "surprise-avatar";
+    const readAvatar = () => Store.get(avatarKey(), "") || "";
+
+    // Crop to a centred square and shrink to AVATAR_PX before storing: a phone photo is several MB,
+    // which would blow localStorage. This keeps it to roughly 15-30KB.
+    function squareDataURL(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file), img = new Image();
+        img.onload = () => {
+          try {
+            const px = S.AVATAR_PX || 256, side = Math.min(img.naturalWidth, img.naturalHeight);
+            const sx = (img.naturalWidth - side) / 2, sy = (img.naturalHeight - side) / 2;
+            const c = document.createElement("canvas"); c.width = c.height = px;
+            c.getContext("2d").drawImage(img, sx, sy, side, side, 0, 0, px, px);
+            resolve(c.toDataURL("image/jpeg", S.AVATAR_QUALITY || 0.82));
+          } catch (err) { reject(err); } finally { URL.revokeObjectURL(url); }
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("not an image")); };
+        img.src = url;
+      });
+    }
+
     function renderIcons() {
       const box = $("su-icons");
-      box.replaceChildren(...ICONS.map(ic => {
-        const b = document.createElement("button"), img = document.createElement("img");
-        b.type = "button"; b.className = "su-icon"; b.dataset.id = ic.id;
-        b.setAttribute("aria-pressed", "false"); b.setAttribute("aria-label", ic.label);
-        img.src = ic.file; img.alt = ""; img.loading = "lazy"; img.width = 32; img.height = 32;
+      const tile = (id, label) => {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "su-icon"; b.dataset.id = id;
+        b.setAttribute("aria-pressed", "false"); b.setAttribute("aria-label", label); b.title = label;
+        return b;
+      };
+      const tiles = ICONS.map((ic, i) => {
+        const b = tile(ic.id, ic.label), img = document.createElement("img");
+        img.src = ic.file; img.alt = ""; img.loading = "lazy"; img.decoding = "async";
+        img.width = 64; img.height = 64;
+        b.style.setProperty("--i", i); // staggers the entrance
         b.append(img);
         return b;
-      }));
+      });
+
+      // "use my own photo" tile, always last
+      const up = tile(CUSTOM_ICON, CONFIG.signup.uploadLabel);
+      up.classList.add("su-icon-upload");
+      up.style.setProperty("--i", ICONS.length);
+      const upImg = document.createElement("img");
+      upImg.alt = ""; upImg.width = 64; upImg.height = 64; upImg.hidden = true;
+      const file = document.createElement("input");
+      file.type = "file"; file.accept = "image/*"; file.className = "su-file"; file.tabIndex = -1;
+      up.append(upImg, file);
+      const saved = readAvatar();
+      if (saved) { upImg.src = saved; upImg.hidden = false; up.classList.add("has-photo"); }
+
+      up.addEventListener("click", e => { if (e.target !== file) file.click(); });
+      file.addEventListener("click", e => e.stopPropagation()); // don't bounce back into the tile
+      file.addEventListener("change", () => {
+        const f = file.files && file.files[0];
+        if (!f) return;
+        up.classList.add("is-loading");
+        squareDataURL(f).then(data => {
+          Store.set(avatarKey(), data);
+          upImg.src = data; upImg.hidden = false;
+          up.classList.add("has-photo", "just-set");
+          setTimeout(() => up.classList.remove("just-set"), 700);
+          select(up);
+        }).catch(() => { showMsg(CONFIG.signup.uploadFailed); })
+          .finally(() => { up.classList.remove("is-loading"); file.value = ""; });
+      });
+
+      box.replaceChildren(...tiles, up);
+
+      function select(b) {
+        for (const o of box.children) o.setAttribute("aria-pressed", "false");
+        b.setAttribute("aria-pressed", "true");
+        selectedIconId = b.dataset.id; signupFixed("icon");
+      }
       box.addEventListener("click", e => {
         const b = e.target.closest(".su-icon"); if (!b) return;
-        for (const o of box.children) o.setAttribute("aria-pressed", "false");
-        b.setAttribute("aria-pressed", "true"); selectedIconId = b.dataset.id; signupFixed("icon");
+        if (b === up && !up.classList.contains("has-photo")) return; // wait for the file first
+        select(b);
       });
     }
 

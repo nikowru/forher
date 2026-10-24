@@ -55,7 +55,7 @@ const PR_NO_DAMPING = 4.2;       // [2.5-6] higher = No settles sooner after a f
 
 // ---- Edit all wording here ----
 const CONFIG = {
-  pageTitle: "A little something for you", // the browser tab
+  pageTitle: "Space for my aki/baby", // the browser tab
   heading: "Would You Like To Open?",
   hint: "A little something for you",
   letter: ["My love,", "Your message goes here: a memory, a promise, something only the two of us would understand.", "Always yours,", "(your name)"],
@@ -117,18 +117,22 @@ const CONFIG = {
   },
   // sign-up card wording (Phase 3 section 4.2); edit freely, same CONFIG convention as the rest of the page
   signup: {
-    title: "A little something for you",
-    usernameLabel: "What should I call you?",
-    usernamePlaceholder: "baby ko",
-    moodLabel: "Are you happy?",
-    iconLabel: "Choose an icon",
-    musicLabel: "Choose your music",
+    title: "Exclusively for my baby/aki",
+    usernameLabel: "A-Anue phue na-name m-mo crushicakes k-ko?",
+    usernamePlaceholder: "baby/aki/therru/xarom/Somebody Else/Osmanthus",
+    moodLabel: "Are u okie babyy, masaya ka phue ba?",
+    iconLabel: "Pili ka pfp bwhehe",
+    musicLabel: "MUSIC TASTEEE",
     // the secret word (js/signup.js): she types it here and again on the login page; trimmed + lowercased when compared
-    secretLabel: "A secret word only we know",
-    secretHint: "Something only we would remember. You will need it to come back.",
+    secretLabel: "Secret word na tau lang makakaalam (password phue baby/aki)",
+    secretHint: "I love youuuuuu",
     continue: "Continue",
     loading: "One moment...", // Continue's label while the account is being created (it is disabled meanwhile)
-    finalQuestion: "Will you be my baby forever?",
+    // the last tile in the icon row: she picks a photo from her own device. It never leaves the
+    // browser - it is cropped square, shrunk, and kept with the rest of her answers.
+    uploadLabel: "Use my own",
+    uploadFailed: "That picture would not open. Try another one?",
+    finalQuestion: "P-pwede phue ba ikaw lang baby ko furiver n iver?",
     yes: "Yes",
     no: "No",
     // gentle prompts shown in #su-msg when Yes is pressed with something still missing (first missing one wins)
@@ -195,23 +199,45 @@ const CONFIG = {
 };
 
 const MOODS = [
-  { id: "sad", emoji: "\u{1F622}", label: "Sad" },
-  { id: "down", emoji: "\u{1F641}", label: "A little down" },
-  { id: "okay", emoji: "\u{1F610}", label: "Okay" },
-  { id: "happy", emoji: "\u{1F642}", label: "Happy" },
-  { id: "very-happy", emoji: "\u{1F604}", label: "Very happy" }
+  { id: "masak8 :<, pero it'll come to pass(no baby tell me)", emoji: "\u{1F622}", label: "i'm not okay" },
+  { id: "i'm not fine", emoji: "\u{1F641}", label: "A little down" },
+  { id: "k lang.", emoji: "\u{1F610}", label: "sakto lang.." },
+  { id: "okay lang", emoji: "\u{1F642}", label: "Happy" },
+  { id: "I'M VERY HAPPY BABY", emoji: "\u{1F604}", label: "SOAPER HAPPY BABYYY" }
 ];
 
 // Placeholder icons for "choose an icon". SWAP REAL FILES IN HERE: replace the files
 // at these paths under /assets/icons/ (or change `file`/`label` to point at your own
 // images) - keep the {id, label, file} shape, since `id` is what gets saved/sent.
+// To add one: drop a square image in /assets/icons/ and add a line here. `label` is read out by
+// screen readers and shown as a tooltip, so give it a name rather than a number. `id` is what gets
+// saved, so don't change an id she may already have picked.
 const ICONS = [
-  { id: "icon-1", label: "One", file: "assets/icons/icon-1.svg" },
-  { id: "icon-2", label: "Two", file: "assets/icons/icon-2.svg" },
-  { id: "icon-3", label: "Three", file: "assets/icons/icon-3.svg" },
-  { id: "icon-4", label: "Four", file: "assets/icons/icon-4.svg" },
-  { id: "icon-5", label: "Five", file: "assets/icons/icon-5.svg" }
+  { id: "a01", label: "Red", file: "assets/icons/avatar-01.jpg" },
+  { id: "a02", label: "Sparkle", file: "assets/icons/avatar-02.jpg" },
+  { id: "a03", label: "Butterfly", file: "assets/icons/avatar-03.jpg" },
+  { id: "a04", label: "Bandana", file: "assets/icons/avatar-04.jpg" },
+  { id: "a05", label: "Headphones", file: "assets/icons/avatar-05.jpg" },
+  { id: "a06", label: "Braid", file: "assets/icons/avatar-06.jpg" },
+  { id: "a07", label: "Beanie", file: "assets/icons/avatar-07.jpg" },
+  { id: "a08", label: "Storm", file: "assets/icons/avatar-08.jpg" },
+  { id: "a09", label: "Pixel", file: "assets/icons/avatar-09.jpg" },
+  { id: "a10", label: "Glasses", file: "assets/icons/avatar-10.jpg" },
+  { id: "a11", label: "Golden", file: "assets/icons/avatar-11.jpg" },
+  { id: "a12", label: "Smile", file: "assets/icons/avatar-12.jpg" },
+  { id: "a13", label: "Mirror", file: "assets/icons/avatar-13.jpg" },
+  { id: "a14", label: "Neon", file: "assets/icons/avatar-14.jpg" },
+  { id: "a15", label: "Pen", file: "assets/icons/avatar-15.jpg" },
+  { id: "a16", label: "Suit", file: "assets/icons/avatar-16.jpg" },
+  { id: "a17", label: "Setup", file: "assets/icons/avatar-17.jpg" },
+  { id: "a18", label: "Morning", file: "assets/icons/avatar-18.jpg" }
 ];
+// Her own photo: the upload tile is added after the list above. The picked file never leaves the
+// browser - it is cropped to a square and shrunk to AVATAR_PX before being stored, so it stays
+// small enough for localStorage (and for a Sheet cell when the backend is switched on).
+const AVATAR_PX = 256;        // [128-384] stored size of an uploaded photo
+const AVATAR_QUALITY = 0.82;  // [0.6-0.9] JPEG quality for an uploaded photo
+const AVATAR_MAX_CHARS = 40000; // a Sheet cell holds 50k; above this the photo stays on her device only
 
 // Placeholder tracks for "choose your music". SWAP REAL FILES IN HERE: drop your own
 // audio files under /assets/music/ (mp3, ogg or wav all work) and update `file` below -
@@ -224,10 +250,13 @@ const MUSIC = [
 ];
 
 // Top-level const above is already global to other classic scripts; hang them on Surprise too, for explicitness.
-Surprise.APPS_SCRIPT_URL = APPS_SCRIPT_URL;
+Surprise.APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzMOcR-BNlTO8dC6Z7XhjNM_CAPMU-AN3QZkIffp0dWPK07Sx3lpIbyRPBvn6IlYXS88w/exec";
 Surprise.CONFIG = CONFIG;
 Surprise.MOODS = MOODS;
 Surprise.ICONS = ICONS;
+Surprise.AVATAR_PX = AVATAR_PX;
+Surprise.AVATAR_QUALITY = AVATAR_QUALITY;
+Surprise.AVATAR_MAX_CHARS = AVATAR_MAX_CHARS;
 Surprise.MUSIC = MUSIC;
 Surprise.PR_NO = {
   RADIUS: PR_NO_RADIUS, RADIUS_SPEED: PR_NO_RADIUS_SPEED, RADIUS_BONUS_MAX: PR_NO_RADIUS_BONUS_MAX, GLIDE_MS: PR_NO_GLIDE_MS,

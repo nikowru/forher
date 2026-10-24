@@ -18,9 +18,9 @@
   //                     written only by js/api.js's local driver, cleared only by a full reset
   //   surprise-session  this device is logged in: { v:1, token, ts } (in Phase B `token` is the server's session token)
   //   surprise-schema   data-layout version (SCHEMA); a mismatch wipes the old keys once, see the migration below
-  const KEYS = { signup: "surprise-signup", reply: "surprise-reply", pending: "surprise-pending-sends", muted: "surprise-muted", progress: "surprise-progress", music: "surprise-music", inboxSeen: "surprise-inbox-seen", account: "surprise-account", session: "surprise-session", schema: "surprise-schema", theme: "theme" };
+  const KEYS = { signup: "surprise-signup", reply: "surprise-reply", pending: "surprise-pending-sends", muted: "surprise-muted", progress: "surprise-progress", music: "surprise-music", inboxSeen: "surprise-inbox-seen", account: "surprise-account", session: "surprise-session", avatar: "surprise-avatar", schema: "surprise-schema", theme: "theme" };
   S.KEYS = KEYS;
-  const RESET_KEYS = [KEYS.signup, KEYS.reply, KEYS.pending, KEYS.muted, KEYS.progress, KEYS.music, KEYS.inboxSeen, KEYS.account, KEYS.session];
+  const RESET_KEYS = [KEYS.signup, KEYS.reply, KEYS.pending, KEYS.muted, KEYS.progress, KEYS.music, KEYS.inboxSeen, KEYS.account, KEYS.session, KEYS.avatar];
   const SCHEMA = "2";
 
   // ---- reset: ?reset=1 OR #reset (also #reset=1) clears everything except `theme`. A hash is never sent to the server,

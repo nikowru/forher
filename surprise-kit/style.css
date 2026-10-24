@@ -309,19 +309,46 @@ html:has(.player[open]){overflow:hidden}
 /* wraps rather than scrolling: at 360px, and in the 2-column cell between ~800-945px, five
    icons on one nowrap row overflowed and clipped (QA S5). It still sits on one row wherever
    there's room, which is every desktop width. */
-.su-icons{display:flex;flex-wrap:wrap;gap:.7rem;justify-content:center;padding:.2rem .1rem 1rem;min-height:auto}
-.su-icon{flex:0 0 auto;box-sizing:border-box;width:clamp(46px,13vw,68px);padding:.5rem .3rem .4rem;
- display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.3rem;
- color:var(--ink);background:var(--tab);border:1.5px solid var(--slot-edge);border-radius:8px;cursor:pointer}
-.su-icon img{width:28px;height:28px;flex:0 0 auto}
-/* --ink, not --tab-ink: --tab-ink is #f3f4f6 in the dark theme, identical to the card's
-   --paper behind the transparent --tab, so these labels were invisible there (QA S5). */
-.su-icon::after{content:attr(aria-label);font:600 .62rem/1.15 'Quicksand',sans-serif;color:var(--ink);text-align:center;white-space:nowrap}
-.su-icon:hover{border-color:var(--accent)}
-.su-icon:focus-visible{outline-offset:2px}
-.su-icon[aria-pressed="true"]{color:var(--tab-on-ink);background:var(--tab-on);border-color:var(--btn);
- box-shadow:0 0 0 3px color-mix(in srgb,var(--btn) 45%,transparent)}
-.su-icon[aria-pressed="true"]::after{color:var(--tab-on-ink)}
+/* Avatar picker: round photo tiles that settle in one by one, lift when hovered, and get a ring
+   plus a tick when chosen. The label is a tooltip rather than text under each one, so a wall of
+   faces stays readable. */
+.su-icons{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:.65rem;
+ justify-items:center;padding:.3rem .1rem .9rem;max-height:14.5rem;overflow-y:auto;scrollbar-width:thin;
+ scrollbar-color:color-mix(in srgb,var(--ink) 35%,transparent) transparent}
+.su-icon{position:relative;box-sizing:border-box;width:56px;height:56px;padding:0;overflow:hidden;
+ display:grid;place-items:center;cursor:pointer;border-radius:50%;
+ background:var(--tab);border:2px solid var(--slot-edge);
+ box-shadow:0 2px 6px -2px rgba(var(--sh),.4);
+ transition:transform .22s cubic-bezier(.2,.8,.3,1),box-shadow .22s ease,border-color .22s ease;
+ animation:av-in .45s cubic-bezier(.2,.8,.3,1) both;animation-delay:calc(min(var(--i,0),24) * 35ms)}
+@keyframes av-in{from{opacity:0;transform:translateY(10px) scale(.82)}}
+.su-icon img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%}
+.su-icon:hover{transform:translateY(-3px) scale(1.06);border-color:var(--accent);
+ box-shadow:0 8px 18px -6px rgba(var(--sh),.55)}
+.su-icon:focus-visible{outline-offset:3px}
+.su-icon:active{transform:translateY(-1px) scale(.98)}
+/* chosen: a ring in --btn (never --tab-on, which equals --paper in the dark theme) and a tick */
+.su-icon[aria-pressed="true"]{border-color:var(--btn);transform:translateY(-2px) scale(1.08);
+ box-shadow:0 0 0 3px color-mix(in srgb,var(--btn) 55%,transparent),0 10px 20px -6px rgba(var(--sh),.55)}
+.su-icon[aria-pressed="true"]::after{content:"\2713";position:absolute;right:-1px;bottom:-1px;
+ width:20px;height:20px;border-radius:50%;display:grid;place-items:center;
+ font:700 .72rem/1 'Quicksand',sans-serif;color:var(--btn-text);background:var(--btn);
+ box-shadow:0 0 0 2px var(--paper);animation:av-tick .3s cubic-bezier(.2,1.5,.4,1) both}
+@keyframes av-tick{from{opacity:0;transform:scale(.3)}}
+/* the "use my own" tile: a dashed well with a + until she picks a photo */
+.su-icon-upload{border-style:dashed;background:color-mix(in srgb,var(--btn) 8%,transparent)}
+.su-icon-upload::before{content:"\002B";font:300 1.5rem/1 'Quicksand',sans-serif;color:var(--btn)}
+.su-icon-upload.has-photo{border-style:solid}
+.su-icon-upload.has-photo::before{content:none}
+.su-icon-upload.is-loading{opacity:.6}
+.su-icon-upload.just-set{animation:av-pop .55s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes av-pop{0%{transform:scale(.7)}60%{transform:scale(1.12)}100%{transform:scale(1.08)}}
+/* the real file input stays inside the tile but out of sight; the tile forwards the click */
+.su-file{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+@media (prefers-reduced-motion:reduce){
+  .su-icon{animation:none;transition:none}
+  .su-icon:hover,.su-icon:active,.su-icon[aria-pressed="true"]{transform:none}
+  .su-icon[aria-pressed="true"]::after,.su-icon-upload.just-set{animation:none}}
 /* track list: a horizontal row of pill buttons (title + a music-note glyph via ::before,
    currentColor so it follows .su-track's own text color/theme) instead of the old stacked
    full-width list. Wraps on very narrow widths rather than forcing a scrollbar, since track
