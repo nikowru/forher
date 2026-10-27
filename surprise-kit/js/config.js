@@ -276,7 +276,7 @@ const MUSIC = [
 // change, and Spotify will not let it play hidden or start on its own. It also plays 30-second
 // previews unless she happens to be signed into Spotify in that browser (full tracks generally
 // want Premium). The continuous soundtrack is the MUSIC files above; this is the real records.
-const SPOTIFY_PLAYLIST = "";
+const SPOTIFY_PLAYLIST = "https://open.spotify.com/playlist/1erLS2omxRNJRgrtTY1HR2?si=BHK7yJGzQcWH_7V7itrzQQ";
 
 // Top-level const above is already global to other classic scripts; hang them on Surprise too, for explicitness.
 Surprise.APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzMOcR-BNlTO8dC6Z7XhjNM_CAPMU-AN3QZkIffp0dWPK07Sx3lpIbyRPBvn6IlYXS88w/exec";
