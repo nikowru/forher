@@ -768,6 +768,11 @@ body.proposal{--pr-glow:20%}
 .lg-confirm-box h3{margin:0 0 .5rem;font:700 1.5rem/1.2 'Dancing Script',cursive;color:var(--btn)}
 .lg-confirm-box p{margin:0 0 1.1rem;font:500 .95rem/1.5 'Quicksand',sans-serif;color:var(--ink)}
 .lg-confirm-row{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;justify-content:center}
+/* the secret word asked for before the account is erased */
+.lg-confirm-label{display:block;margin:0 0 .4rem;font:600 .9rem/1.3 'Quicksand',sans-serif;color:var(--ink)}
+.lg-confirm-box .su-input{width:100%;box-sizing:border-box;margin:0 0 .9rem}
+.lg-confirm-box .su-msg{margin:-.4rem 0 .9rem;font-size:.86rem;color:var(--btn);font-weight:600}
+.lg-confirm-box [aria-busy="true"]{opacity:.75;cursor:progress}
 
 /* stacked: the panel becomes a banner above the form, and the sign-up link moves into the form */
 @media (max-width:800px){

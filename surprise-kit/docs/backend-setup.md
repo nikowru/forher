@@ -108,6 +108,19 @@ left alone.
 On the site side, `?reset=1` or `#reset` only clears *that browser* — the account itself lives in the
 Sheet, so use `resetAccount` for a true reset.
 
+### She can also start over herself
+
+"Not me / start fresh" on the gate erases the account for real, so she can live the whole thing again
+from the sign-up card. It asks for the secret word first and says plainly that her reply goes with it.
+
+The word is checked on the server, by the same code and the same lockout as signing in. That check is
+the point: the Web app URL is visible in the page source, so without it anyone holding the link could
+wipe her account. If she has forgotten the word she can't use this — run `resetAccount` for her.
+
+**This needs a redeploy.** The action lives in `backend/Code.gs`, so paste the file in again and
+**Deploy → Manage deployments → edit → Version: New version → Deploy**, or the site will call an
+action the deployed script doesn't have and the button will just report a problem.
+
 ## The limits, honestly
 
 - **This is a username and a secret word, not real security.** The word is stored only as a salted
@@ -120,7 +133,10 @@ Sheet, so use `resetAccount` for a true reset.
 - **Capitalisation and spaces don't matter** for the username or secret word — `"  Our Word "` and
   `"our word"` are the same. Deliberate, so she can't lock herself out over a capital letter.
 - **There's no "forgot my secret word".** If she can't get in, you run `resetAccount` and she signs
-  up again.
+  up again. "Not me / start fresh" won't help her there — it asks for that same word before erasing
+  anything, on purpose.
+- **"Not me / start fresh" cannot be undone.** It erases the account row, every session, and the
+  reply she wrote. The Memories rows and the salt survive. There is no copy kept anywhere.
 - **The first request after a quiet spell takes a few seconds** while Google wakes the script up.
   The site shows a loading state rather than looking broken.
 - **Quotas** are generous — roughly 20,000 calls a day on a personal account. For one person, you'll

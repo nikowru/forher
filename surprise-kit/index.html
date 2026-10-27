@@ -52,16 +52,20 @@
   </div>
 </section>
 
-<!-- "not me / start fresh": forgets this device's session only. Same <dialog> pattern as the player. -->
+<!-- "not me / start fresh": erases the account everywhere, so it asks for the secret word first.
+     Same <dialog> pattern as the player: Esc closes, focus is trapped, the page behind is inert. -->
 <dialog class="lg-confirm" id="lg-confirm" aria-labelledby="lg-confirm-title">
-  <div class="lg-confirm-box">
+  <form class="lg-confirm-box" id="lg-confirm-form" method="dialog">
     <h3 id="lg-confirm-title"></h3>
     <p id="lg-confirm-text"></p>
+    <label class="lg-confirm-label" for="lg-confirm-secret"></label>
+    <input class="su-input" type="password" id="lg-confirm-secret" autocomplete="off" required>
+    <p class="su-msg" id="lg-confirm-msg" role="status" hidden></p>
     <div class="lg-confirm-row">
       <button type="button" class="su-continue" id="lg-confirm-no"></button>
-      <button type="button" class="gate-link" id="lg-confirm-yes"></button>
+      <button type="submit" class="gate-link" id="lg-confirm-yes"></button>
     </div>
-  </div>
+  </form>
 </dialog>
 <div id="air" aria-hidden="true"></div>
 <button class="theme" id="theme"></button>

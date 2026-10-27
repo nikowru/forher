@@ -102,21 +102,46 @@
       });
     });
 
-    // ---- "not me / start fresh": confirm, then forget THIS DEVICE's session only (the account stays) ----
-    // <dialog> gives Esc-to-close, a focus trap and an inert page behind it; focus goes in on open and back on close.
+    // ---- "not me / start fresh": erase the account everywhere, so the whole thing can be lived again ----
+    // This is the one destructive thing on the site, so it asks for the secret word before doing it and
+    // says plainly what goes. <dialog> gives Esc-to-close, a focus trap and an inert page behind it.
     const dlg = $("lg-confirm"), resetBtn = $("lg-reset");
     if (!dlg || !resetBtn) return;
+    const C = L.confirm, dSecret = $("lg-confirm-secret"), dMsg = $("lg-confirm-msg"), dYes = $("lg-confirm-yes");
+    const dLabel = document.querySelector(".lg-confirm-label");
+    if (dLabel) dLabel.textContent = C.secretLabel;
+    let erasing = false;
+    const dShow = t => { dMsg.textContent = t; dMsg.hidden = false; };
+    const dClear = () => { dMsg.textContent = ""; dMsg.hidden = true; };
+
     resetBtn.addEventListener("click", () => {
       if (typeof dlg.showModal !== "function") return;
-      if (!dlg.open) { dlg.returnValue = ""; dlg.showModal(); $("lg-confirm-no").focus(); } // the safe choice has focus first
+      if (dlg.open) return;
+      dlg.returnValue = ""; dSecret.value = ""; dClear();
+      dlg.showModal();
+      $("lg-confirm-no").focus(); // the safe choice has focus first
     });
-    $("lg-confirm-no").addEventListener("click", () => dlg.close());
-    dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); }); // click outside the box
-    dlg.addEventListener("close", () => { (dlg.returnValue === "fresh" ? username : resetBtn).focus(); }); // focus back: Esc, No and Yes alike
-    $("lg-confirm-yes").addEventListener("click", () => {
-      Api.logout();        // clears the session only; the account and the saved answers are untouched
-      username.value = ""; secret.value = ""; clearMsg(); unmark();
-      dlg.close("fresh");
+    $("lg-confirm-no").addEventListener("click", () => { if (!erasing) dlg.close(); });
+    dlg.addEventListener("click", e => { if (e.target === dlg && !erasing) dlg.close(); }); // click outside the box
+    dlg.addEventListener("close", () => { if (!erasing) resetBtn.focus(); });               // focus back: Esc and No alike
+    dSecret.addEventListener("input", dClear);
+
+    $("lg-confirm-form").addEventListener("submit", e => {
+      e.preventDefault();                       // the dialog must not close until the server has answered
+      if (erasing) return;
+      const word = dSecret.value;
+      if (!word.trim()) { dShow(C.secretLabel); dSecret.focus(); return; }
+      // the username comes from the sign-in field she is already looking at; empty means she only typed the word
+      const who = username.value.trim();
+      erasing = true;
+      dYes.disabled = true; dYes.setAttribute("aria-busy", "true"); dYes.textContent = C.working;
+      Api.deleteAccount(who || (S.Store.getJSON(S.KEYS.signup, {}) || {}).username || "", word).then(r => {
+        if (r.ok) { location.replace("index.html"); return; } // gone: straight back to a first-time gate
+        erasing = false;
+        dYes.disabled = false; dYes.removeAttribute("aria-busy"); dYes.textContent = C.yes;
+        dShow(C[r.error === "wrong" ? "wrong" : r.error === "locked" ? "locked" : "network"]);
+        dSecret.value = ""; dSecret.focus();   // she stays in the dialog and can try again
+      });
     });
   }
 })();

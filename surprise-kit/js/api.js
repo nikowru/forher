@@ -124,6 +124,19 @@
         return ok({ profile: profileOf(acct) });
       },
 
+      // "Not me / start fresh": erase the account so sign-up can be lived again. Gated on the secret
+      // word like the server, so the two drivers refuse and accept in exactly the same cases.
+      deleteAccount(username, secret) {
+        const acct = load();
+        if (!acct) return ok({ existed: false }); // already gone; a repeated call is still a success
+        if (norm(username) !== norm(acct.username)) return fail("wrong");
+        return matches(acct.secret, secret).then(good => {
+          if (!good) return { ok: false, error: "wrong" }; // one answer for either part
+          Store.remove(KEYS.account);
+          return { ok: true, existed: true };
+        });
+      },
+
       // public, like the real getMemories: the Memories data. Phase A reads the repo's clips.json.
       getMemories() {
         return fetch("clips.json").then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
@@ -180,6 +193,7 @@
       saveProgress(token, progress) { return call({ action: "saveProgress", token, progress }, true); },
       saveReply(token, text) { return call({ action: "saveReply", token, text }, true); },
       getProfile(token) { return call({ action: "getProfile", token }, true); },
+      deleteAccount(username, secret) { return call({ action: "deleteAccount", username, secret }, true); },
       getMemories() { return call({ action: "getMemories" }, true); }
     };
   }
@@ -246,6 +260,15 @@
     getProfile() { return guard(() => driver.getProfile(tokenNow())).then(authLost); },
     getMemories() { return guard(() => driver.getMemories()); },
     // "Not me / start fresh": forget this device's login only (the account itself stays)
-    logout() { Session.clear(); return ok({}); }
+    logout() { Session.clear(); return ok({}); },
+    // Erase the account everywhere, so the whole thing can be lived again from the sign-up card.
+    // The secret word has to be right, and only once the server confirms does this device drop its
+    // own copies - a refused delete leaves her exactly where she was.
+    deleteAccount(username, secret) {
+      return guard(() => driver.deleteAccount(username, secret)).then(r => {
+        if (r.ok && typeof S.reset === "function") S.reset(); // clears every key but the theme, and stops teardown writing it back
+        return r;
+      });
+    }
   };
 })();

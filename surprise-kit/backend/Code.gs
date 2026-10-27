@@ -51,11 +51,19 @@ function setup() {
 
 /** Wipes the account so you can test sign-up again. Memories and the salt are left alone. */
 function resetAccount() {
+  wipeAccount_();
+  return 'Account cleared. The site will offer sign-up again.';
+}
+
+/**
+ * The account row, every live session and the lockout counters. The Memories tab and the salt
+ * stay, so the clips and the hashing survive a reset.
+ */
+function wipeAccount_() {
   var sh = sheet_(SHEET_ACCOUNT);
   if (sh && sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).clearContent();
   PropertiesService.getScriptProperties().deleteProperty(PROP_TOKENS);
   CacheService.getScriptCache().removeAll([CACHE_FAILS, CACHE_LOCKED]);
-  return 'Account cleared. The site will offer sign-up again.';
 }
 
 function ensureSheet_(ss, name, headers) {
@@ -107,6 +115,7 @@ function route_(action, body) {
     case 'saveProgress': return saveProgress_(body);
     case 'saveReply':    return saveReply_(body);
     case 'getProfile':   return getProfile_(body);
+    case 'deleteAccount': return deleteAccount_(body);
     default:             return { ok: false, error: 'invalid' }; // unknown actions are ignored
   }
 }
@@ -272,6 +281,34 @@ function login_(body) {
   }
   clearFails_();
   return { ok: true, token: newToken_(), profile: profileOf_(acct) };
+}
+
+/**
+ * "Not me / start fresh": erases the one account so the whole thing can be lived again from the
+ * sign-up card. Gated on the secret word, because the Web app URL ships inside the page source -
+ * without that check anyone holding the link could wipe her account and her reply. Wrong answers
+ * feed the same lockout as login, so the word cannot be guessed at speed.
+ * Deleting an account that is already gone is a success: a retried call must not look like a failure.
+ */
+function deleteAccount_(body) {
+  if (lockedOut_()) return { ok: false, error: 'locked' };
+  var username = str_(body.username, MAX_USERNAME);
+  var secret = str_(body.secret, MAX_SECRET);
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (err) { return { ok: false, error: 'server' }; }
+  try {
+    var acct = readAccount_();
+    if (!acct) return { ok: true, existed: false }; // nothing to erase, and status already says as much
+    // One answer for a wrong username or a wrong word, exactly like login: never say which.
+    if (norm_(username) !== norm_(acct.username) || !sameHash_(acct.secretHash, hashSecret_(secret))) {
+      noteFail_();
+      return { ok: false, error: 'wrong' };
+    }
+    wipeAccount_();
+    return { ok: true, existed: true };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function saveProgress_(body) {

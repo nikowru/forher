@@ -181,12 +181,18 @@ const CONFIG = {
     network: "Something went wrong on my side. Try once more in a moment?",
     // too many wrong tries in a row: the server pauses logins for a few minutes (kind, and says nothing about which part was wrong)
     locked: "Too many tries for now. Give it a few minutes and try again, sweetheart?",
-    // "not me" confirmation dialog: forgets only this device, never the saved account
+    // "not me / start fresh" dialog. This one really does erase the account, so it asks for the
+    // secret word first and says plainly what goes. Everything below is wording: edit freely.
     confirm: {
-      title: "Not you?",
-      text: "This forgets who this device was signed in as. Nothing you saved is deleted.",
-      yes: "Yes, start fresh",
-      no: "Keep me here"
+      title: "Start over?",
+      text: "This erases the account and everything saved with it - including the letter you wrote back - so the whole thing begins again from the very first page. It cannot be undone.",
+      secretLabel: "Type our secret word to be sure",
+      yes: "Yes, start over",
+      no: "Keep me here",
+      working: "Erasing...",        // the Yes button while the request is in flight
+      wrong: "That is not our secret word.",
+      network: "Something went wrong on my side. Try once more in a moment?",
+      locked: "Too many tries for now. Give it a few minutes, sweetheart?"
     }
   },
   // phone-style notification on the letter page (js/letter.js), shown once during the first-time intro
