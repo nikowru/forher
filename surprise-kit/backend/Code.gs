@@ -33,6 +33,15 @@ var LOCKOUT_SECONDS = 300;          // ...then locked for ~5 minutes (approved d
 var CACHE_FAILS = 'login_fails';
 var CACHE_LOCKED = 'login_locked';
 
+// "I forgot our secret word". The word itself can never be sent: only its salted hash is kept, and
+// that is the point of hashing it. So instead a one-time word is minted, emailed to the owner of this
+// script, and accepted ALONGSIDE her real one for a short while. Her own word keeps working - if she
+// remembers it an hour later, nothing has been taken away from her.
+var PROP_TEMP = 'TEMP_SECRET';      // { h: <hash>, exp: <ms> }, at most one at a time
+var TEMP_TTL_MS = 1000 * 60 * 60;   // the emailed word is good for an hour
+var CACHE_FORGOT = 'forgot_sent';
+var FORGOT_QUIET_SECONDS = 600;     // at most one email every ten minutes, so the button cannot be used to spam
+
 var ACCOUNT_HEADERS = ['username', 'secretHash', 'mood', 'icon', 'music', 'accepted',
                        'unlocked', 'reply', 'replyTime', 'created'];
 var MEMORIES_HEADERS = ['title', 'note', 'date', 'youtubeId', 'collection', 'order'];
@@ -116,6 +125,7 @@ function route_(action, body) {
     case 'saveReply':    return saveReply_(body);
     case 'getProfile':   return getProfile_(body);
     case 'deleteAccount': return deleteAccount_(body);
+    case 'forgotSecret':  return forgotSecret_();
     default:             return { ok: false, error: 'invalid' }; // unknown actions are ignored
   }
 }
@@ -245,6 +255,104 @@ function noteFail_() {
 
 function clearFails_() { CacheService.getScriptCache().removeAll([CACHE_FAILS, CACHE_LOCKED]); }
 
+/* ------------------------------------------------- forgotten word */
+
+function readTemp_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(PROP_TEMP);
+  var t = null;
+  try { t = JSON.parse(raw || 'null'); } catch (err) { t = null; }
+  if (!t || !t.h || Number(t.exp) <= Date.now()) return null;
+  return t;
+}
+
+function clearTemp_() { PropertiesService.getScriptProperties().deleteProperty(PROP_TEMP); }
+
+/** True if `secret` is the live emailed word. Safe when there isn't one. */
+function usableTemp_(secret) {
+  var t = readTemp_();
+  return !!t && sameHash_(t.h, hashSecret_(secret));
+}
+
+/**
+ * A word she can actually read down the phone and type: no 0/O or 1/l, no punctuation.
+ * Three short groups, which is plenty - it only lives for an hour and only reaches one inbox.
+ */
+function tempWord_() {
+  var ABC = 'abcdefghjkmnpqrstuvwxyz23456789', out = [];
+  for (var g = 0; g < 3; g++) {
+    var part = '';
+    for (var i = 0; i < 4; i++) part += ABC.charAt(Math.floor(Math.random() * ABC.length));
+    out.push(part);
+  }
+  return out.join('-');
+}
+
+/**
+ * "I forgot our secret word": mint a one-hour word, email it to whoever owns this script, and let it
+ * work alongside her real one. Always answers ok, even with no account or while quiet - the gate must
+ * not become a way of asking whether an account exists, and she gets the same kind sentence either way.
+ */
+function forgotSecret_() {
+  var acct = readAccount_();
+  if (!acct) return { ok: true };                                  // nothing to recover; say nothing either way
+  var cache = CacheService.getScriptCache();
+  if (cache.get(CACHE_FORGOT)) return { ok: true };                // already sent recently: do not send again
+  var word = tempWord_();
+  PropertiesService.getScriptProperties().setProperty(PROP_TEMP,
+    JSON.stringify({ h: hashSecret_(word), exp: Date.now() + TEMP_TTL_MS }));
+  cache.put(CACHE_FORGOT, '1', FORGOT_QUIET_SECONDS);
+  try {
+    MailApp.sendEmail({
+      to: ownerEmail_(),
+      subject: 'She forgot the secret word',
+      body: [
+        acct.username + ' asked for help getting in.',
+        '',
+        'Her own secret word has NOT been changed and still works - it is stored as a hash, so',
+        'nobody can read it back, not even this script.',
+        '',
+        'Give her this word instead. It works for one hour, then stops by itself:',
+        '',
+        '    ' + word,
+        '',
+        'Once she is in, she can keep using it until it expires. To give her a new permanent word,',
+        'open the Apps Script editor and run:  setSecret("whatever you two choose")',
+        '',
+        'If this was not her, you can ignore it: nothing has been changed and this word only',
+        'reached your inbox.'
+      ].join('\n')
+    });
+  } catch (err) {
+    // the word is already live, so she can still be let in by hand; never leak the reason to the page
+    return { ok: true, mailed: false };
+  }
+  return { ok: true, mailed: true };
+}
+
+/** Whoever owns this script. Deliberately not written down anywhere in the repo. */
+function ownerEmail_() {
+  var set = PropertiesService.getScriptProperties().getProperty('OWNER_EMAIL');
+  if (set) return set;
+  return Session.getEffectiveUser().getEmail();
+}
+
+/**
+ * Run from the editor to give her a new permanent word, keeping her account, her progress and her
+ * reply exactly as they are. This is the answer to "she forgot it" that costs her nothing.
+ */
+function setSecret(newWord) {
+  var word = String(newWord == null ? '' : newWord);
+  if (!norm_(word)) return 'Give it a word: setSecret("our new word")';
+  var acct = readAccount_();
+  if (!acct) return 'There is no account yet.';
+  acct.secretHash = hashSecret_(word);
+  writeAccount_(acct);
+  clearTemp_();
+  clearFails_();
+  PropertiesService.getScriptProperties().deleteProperty(PROP_TOKENS); // every device signs in again with the new word
+  return 'Done. The secret word is now what you just set; everything else is untouched.';
+}
+
 /* ------------------------------------------------------------------ actions */
 
 function signup_(body) {
@@ -275,10 +383,13 @@ function login_(body) {
   var username = str_(body.username, MAX_USERNAME);
   var secret = str_(body.secret, MAX_SECRET);
   // One answer for a wrong username, a wrong word, or no account at all: never say which.
-  if (!acct || norm_(username) !== norm_(acct.username) || !sameHash_(acct.secretHash, hashSecret_(secret))) {
+  var right = !!acct && norm_(username) === norm_(acct.username) &&
+    (sameHash_(acct.secretHash, hashSecret_(secret)) || usableTemp_(secret));
+  if (!right) {
     noteFail_();
     return { ok: false, error: 'wrong' };
   }
+  clearTemp_();   // whichever word got her in, the emailed one has done its job
   clearFails_();
   return { ok: true, token: newToken_(), profile: profileOf_(acct) };
 }

@@ -121,6 +121,31 @@ wipe her account. If she has forgotten the word she can't use this — run `rese
 **Deploy → Manage deployments → edit → Version: New version → Deploy**, or the site will call an
 action the deployed script doesn't have and the button will just report a problem.
 
+## If she forgets the secret word
+
+She taps **"I forgot our secret word"** — it appears under the fields once a word has been refused.
+You get an email with a temporary word like `k3mq-7bda-xp2w`. Tell it to her; it signs her in and then
+expires an hour later. Her real word keeps working the whole time and is never touched.
+
+The email goes to whoever owns the script. To send it somewhere else, add a Script Property called
+`OWNER_EMAIL`. Apps Script allows roughly 100 emails a day on a personal account, and the button is
+limited to one email per ten minutes, so it cannot be used to flood your inbox.
+
+To give her a **new permanent word**, open the Apps Script editor, pick `setSecret` from the dropdown,
+and run it with the new word:
+
+~~~js
+setSecret("whatever you two choose")
+~~~
+
+That keeps her account, her progress and her reply exactly as they are, and signs every device out so
+the new word is used from then on. Prefer this to `resetAccount`, which erases everything.
+
+**Both of these need a redeploy** (they live in `backend/Code.gs`): paste the file in again, then
+**Deploy → Manage deployments → edit → Version: New version → Deploy**.
+
+The first time the script sends an email, Google will ask you to approve the extra permission.
+
 ## The limits, honestly
 
 - **This is a username and a secret word, not real security.** The word is stored only as a salted
@@ -132,9 +157,10 @@ action the deployed script doesn't have and the button will just report a proble
   a valid session.
 - **Capitalisation and spaces don't matter** for the username or secret word — `"  Our Word "` and
   `"our word"` are the same. Deliberate, so she can't lock herself out over a capital letter.
-- **There's no "forgot my secret word".** If she can't get in, you run `resetAccount` and she signs
-  up again. "Not me / start fresh" won't help her there — it asks for that same word before erasing
-  anything, on purpose.
+- **A forgotten secret word is recoverable, but never readable.** It is stored only as a salted hash,
+  so nothing — not even this script — can tell you what it was. "I forgot our secret word" on the gate
+  therefore does not reveal it: it emails *you* a fresh word that works for one hour alongside hers,
+  which you pass to her. Her own word is never changed by this. See "If she forgets" below.
 - **"Not me / start fresh" cannot be undone.** It erases the account row, every session, and the
   reply she wrote. The Memories rows and the salt survive. There is no copy kept anywhere.
 - **The first request after a quiet spell takes a few seconds** while Google wakes the script up.

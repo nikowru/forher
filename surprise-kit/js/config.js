@@ -171,6 +171,11 @@ const CONFIG = {
     loading: "One moment...", // Continue's label while the login request is in flight (it is disabled meanwhile)
     reset: "Not me / start fresh",
     remember: "Remember me on this laptop",
+    // shown under the fields once she has got the word wrong, so it is there when she needs it and
+    // not before. Nothing here says whether an account exists.
+    forgot: "I forgot our secret word",
+    forgotSending: "One moment...",
+    forgotSent: "I've let him know, baby. He'll send you a word to get in with.",
     // gentle prompts when Continue is pressed with a field empty (first empty one wins)
     missing: {
       username: "Tell me who you are first, please?",

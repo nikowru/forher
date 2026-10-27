@@ -53,6 +53,7 @@
   function fillWording() {
     document.title = W.title;
     const rem = $("lg-remember-label"); if (rem) rem.textContent = L.remember;
+    const fg = $("lg-forgot"); if (fg) fg.textContent = L.forgot;
     const themeBtn = $("theme"); if (themeBtn) themeBtn.setAttribute("aria-label", CONFIG.labels.theme);
     setText("wl-title", W.title);
     const lab = (id, t) => { const el = document.querySelector('label[for="' + id + '"]'); if (el) el.textContent = t; };
@@ -118,6 +119,7 @@
           if (r.error === "locked") showMsg(L.locked); // paused for a few minutes: keep both fields as typed
           else if (r.error === "wrong") { // one message whichever part was wrong; the typed username stays, the word is cleared
             showMsg(L.wrong); secret.value = ""; secret.focus();
+            const fg = $("lg-forgot"); if (fg) fg.hidden = false; // now it is worth offering
           } else showMsg(L.network);
           return;
         }
@@ -126,6 +128,19 @@
         rememberNow(!!(box && box.checked), username.value.trim(), secret.value);
         const prof = r.profile || {};
         S.Chrome.go(Guard.onward());
+      });
+    });
+
+    // ---- "I forgot our secret word": ask him for help, without giving anything away ----
+    // One ask is enough; the button retires itself so she cannot sit there sending a dozen.
+    const forgotBtn = $("lg-forgot");
+    if (forgotBtn) forgotBtn.addEventListener("click", () => {
+      if (forgotBtn.disabled) return;
+      forgotBtn.disabled = true; forgotBtn.textContent = L.forgotSending;
+      Api.forgotSecret().then(() => {
+        forgotBtn.hidden = true;        // done: the message below says what happens next
+        showMsg(L.forgotSent);
+        secret.focus();
       });
     });
 

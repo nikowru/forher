@@ -88,11 +88,15 @@
       login(username, secret) {
         const acct = load();
         if (!acct || norm(username) !== norm(acct.username)) return fail("wrong");
-        return matches(acct.secret, secret).then(good => {
-          if (!good) return { ok: false, error: "wrong" };
-          const token = newToken(acct); save(acct);
-          return { ok: true, token, profile: profileOf(acct) };
-        });
+        const live = acct.temp && Number(acct.temp.exp) > Date.now() ? acct.temp.secret : null;
+        return matches(acct.secret, secret)
+          .then(good => good || (live ? matches(live, secret) : false))
+          .then(good => {
+            if (!good) return { ok: false, error: "wrong" };
+            delete acct.temp;            // whichever word worked, the stand-in has done its job
+            const token = newToken(acct); save(acct);
+            return { ok: true, token, profile: profileOf(acct) };
+          });
       },
 
       // server-side rules: flags only ever turn ON; letter needs accepted; memories + inbox need the reply
@@ -122,6 +126,20 @@
         const acct = load();
         if (!authed(acct, token)) return fail("auth");
         return ok({ profile: profileOf(acct) });
+      },
+
+      // Phase A has no mail. It mints the same kind of one-hour word and prints it to the console so the
+      // flow can still be walked end to end; Phase B emails it instead. Both answer ok either way.
+      forgotSecret() {
+        const acct = load();
+        if (!acct) return ok({});
+        const word = "try-" + Math.random().toString(36).slice(2, 6) + "-" + Math.random().toString(36).slice(2, 6);
+        return hashSecret(word, rand()).then(h => {
+          acct.temp = { secret: h, exp: Date.now() + 60 * 60 * 1000 };
+          save(acct);
+          try { console.info("[surprise] local stand-in for the emailed word:", word); } catch (e) { /* ignore */ }
+          return { ok: true, mailed: false };
+        });
       },
 
       // "Not me / start fresh": erase the account so sign-up can be lived again. Gated on the secret
@@ -194,6 +212,7 @@
       saveReply(token, text) { return call({ action: "saveReply", token, text }, true); },
       getProfile(token) { return call({ action: "getProfile", token }, true); },
       deleteAccount(username, secret) { return call({ action: "deleteAccount", username, secret }, true); },
+      forgotSecret() { return call({ action: "forgotSecret" }, false); }, // never retried: one ask, one email
       getMemories() { return call({ action: "getMemories" }, true); }
     };
   }
@@ -261,6 +280,10 @@
     getMemories() { return guard(() => driver.getMemories()); },
     // "Not me / start fresh": forget this device's login only (the account itself stays)
     logout() { Session.clear(); return ok({}); },
+    // "I forgot our secret word": asks the server to mint a one-hour word and email it to him. Her own
+    // word is untouched, and the answer is the same whether or not anything was sent, so the gate never
+    // becomes a way of finding out whether an account exists.
+    forgotSecret() { return guard(() => driver.forgotSecret()); },
     // Erase the account everywhere, so the whole thing can be lived again from the sign-up card.
     // The secret word has to be right, and only once the server confirms does this device drop its
     // own copies - a refused delete leaves her exactly where she was.
