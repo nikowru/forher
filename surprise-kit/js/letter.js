@@ -15,7 +15,10 @@
   const stage = $("stage"), scene = $("scene"), seal = $("seal"), letter = $("letter"), text = $("text");
   if (!over || !stage || !scene || !seal || !letter || !text || !$("reply-form")) return; // not the host page
   if (S.Guard.target("memories")) return;        // she does not belong here; memories.js is already redirecting
-  if (Store.getJSON(KEYS.reply, null)) return;   // already written: no overlay, the gallery stands alone
+  // "Already written" has two sources. This device's copy is the usual one, but after signing in on a NEW
+  // device that copy is empty while the account knows better - and the inbox flag comes down with the
+  // profile. Without the second test the letter would arrive all over again on her phone.
+  if (Store.getJSON(KEYS.reply, null) || Progress.isUnlocked("inbox")) return; // the gallery stands alone
 
   const host = $("main"), nav = document.querySelector(".hdr-nav");
   // the gallery is visible the whole time but must not be clickable or tabbable behind the letter
@@ -28,6 +31,10 @@
 
   const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
   const R = CONFIG.reply;
+  // She has opened the envelope before but not written back yet (she wandered off, or reloaded). The letter
+  // still has to be here - the reply is what unlocks the rest - but making her watch it arrive a second time
+  // is the bug she reported. So on a return it is simply already open, waiting for her.
+  const seen = Store.get(KEYS.letterSeen, "") === "1";
 
   // ---- wording (all from CONFIG) ----
   $("title").textContent = CONFIG.heading; // the page title stays "Our memories": this is a layer on that page
@@ -49,11 +56,14 @@
 
   // ---- intro: dim the page, let the letter fall and the decorations unfold (pure CSS, see #stage.intro-dim:not(.intro-pre)),
   // slide the notification in once that has landed, then focus the seal ----
-  stage.classList.add("intro-dim", "intro-pre");
-  // two rAFs so the pre-entrance state is painted at least once; otherwise the removal could be coalesced into the
-  // same frame and the entrance animation would never run
-  requestAnimationFrame(() => requestAnimationFrame(() => stage.classList.remove("intro-pre")));
-  setTimeout(() => seal.focus({ preventScroll: true }), 2200);
+  stage.classList.add("intro-dim"); // the dim stays either way: the gallery waits until she has written back
+  if (!seen) {
+    stage.classList.add("intro-pre");
+    // two rAFs so the pre-entrance state is painted at least once; otherwise the removal could be coalesced into the
+    // same frame and the entrance animation would never run
+    requestAnimationFrame(() => requestAnimationFrame(() => stage.classList.remove("intro-pre")));
+    setTimeout(() => seal.focus({ preventScroll: true }), 2200);
+  }
 
   // ---- notification (#notif): show = text, hidden=false, .is-in next frame; dismiss = remove .is-in, hidden=true after the slide ----
   const N = CONFIG.notify, notif = $("notif"), notifBtn = $("notif-btn"), notifText = $("notif-text");
@@ -87,24 +97,31 @@
     playNotifSound();
   }
   if (notifBtn) notifBtn.addEventListener("click", dismissNotif);
-  setTimeout(showNotif, N.delayMs);
+  if (!seen) setTimeout(showNotif, N.delayMs); // it announced the letter once; it is not news any more
 
   // ---- seal -> letter ----
+  // One opener for both ways in. `instant` is the return visit: the same end state with no choreography,
+  // so she picks up exactly where she left off instead of watching the envelope open again.
   let opened = false;
-  seal.addEventListener("click", () => {
+  function openLetter(instant) {
     if (opened) return; opened = true;
+    Store.set(KEYS.letterSeen, "1"); // remembered from here on, so a reload does not replay the arrival
     seal.classList.add("broken"); seal.disabled = true; // gone from view, so gone from the Tab order too
-    setTimeout(() => scene.classList.add("open"), 350);
-    setTimeout(() => scene.classList.add("flapback"), 800);
-    setTimeout(() => { scene.classList.add("rise"); $("title").classList.add("fade"); $("hint").classList.add("fade"); }, 1250);
-    setTimeout(() => {
+    const at = (ms, fn) => (instant ? fn() : setTimeout(fn, ms));
+    at(350, () => scene.classList.add("open"));
+    at(800, () => scene.classList.add("flapback"));
+    at(1250, () => { scene.classList.add("rise"); $("title").classList.add("fade"); $("hint").classList.add("fade"); });
+    at(2500, () => {
       scene.classList.add("read");
       makeScrollable();
       // the letter only becomes reachable once it can be read; keyboard focus lands on it
       letter.inert = false;
-      (text.tabIndex === 0 ? text : $("reply-text")).focus({ preventScroll: true });
-    }, 2500);
-  });
+      // on a return visit do not steal focus or scroll the page about: she did not ask to come back here
+      if (!instant) (text.tabIndex === 0 ? text : $("reply-text")).focus({ preventScroll: true });
+    });
+  }
+  seal.addEventListener("click", () => openLetter(false));
+  if (seen) openLetter(true); // already opened once: it is simply open, waiting for her reply
 
   // ---- reply: soft confirm, save, fold, light up, reveal the link to memories ----
   let replyAttempted = false, replyDone = false;
