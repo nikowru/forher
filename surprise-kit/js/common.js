@@ -60,9 +60,12 @@
 
   // ---- progress: which pages are unlocked. proposal after a finished sign-up/login; letter after `accepted` (Yes);
   // memories + inbox after the reply.
-  const PAGES = ["letter", "memories", "inbox"];                      // the pages the header nav knows
+  const PAGES = ["memories", "inbox"];                                // the pages the header nav knows
+  // "letter" has no page of its own any more - it is delivered as an overlay on memories.html - but it stays a
+  // flag, because it is still the milestone between saying Yes and writing the reply, and accounts already
+  // carry it. Saying Yes unlocks memories; the reply unlocks inbox.
   const FLOW = ["proposal", "letter", "memories", "inbox"];           // everything with an unlock flag
-  const LANDING = ["memories", "letter", "proposal"];                 // furthest first; inbox is a side page, never a landing target
+  const LANDING = ["memories", "proposal"];                           // furthest first; inbox is a side page, never a landing target
   const Progress = {
     // { proposal, letter, memories, inbox, accepted } - always all five booleans
     read() {
@@ -77,8 +80,9 @@
       return Store.setJSON(KEYS.progress, p);
     },
     isUnlocked(page) { return FLOW.indexOf(page) >= 0 && Progress.read()[page] === true; },
-    // Yes was pressed: sets `accepted` and unlocks the letter together
-    accept() { const p = Progress.read(); p.accepted = true; p.letter = true; return Store.setJSON(KEYS.progress, p); },
+    // Yes was pressed: sets `accepted` and opens the letter AND memories, because the letter is now
+    // delivered on the memories page. Without memories here, furthest() would send her back to the proposal.
+    accept() { const p = Progress.read(); p.accepted = true; p.letter = true; p.memories = true; return Store.setJSON(KEYS.progress, p); },
     isAccepted() { return Progress.read().accepted === true; },
     // the last page she unlocked ("memories" | "letter" | "proposal"), or null; used to send her onward after login
     furthest() { const p = Progress.read(); return LANDING.find(k => p[k]) || null; },
@@ -102,7 +106,7 @@
   S.Session = Session;
 
   // ---- which page is this? "proposal" | "login" | "letter" | "memories" | "inbox", or null (index.html, anything else).
-  // Works for letter.html, /letter.html and extensionless /letter hosting, and for any href (pass a pathname).
+  // Works for memories.html, /memories.html and extensionless /memories hosting, and for any href (pass a pathname).
   const KNOWN = FLOW.concat("login");
   function pageOf(pathname) {
     let seg = String(pathname || "").split("/").pop();
@@ -126,8 +130,8 @@
   // ---- page guards: a page file calls Surprise.Guard.require("memories") on load ----
   // Rules (flag-based; the "accepted" flag is never inferred from old data):
   //   proposal  needs a finished sign-up or login (its unlock flag)  -> else index.html (which shows sign-up or login)
-  //   letter    needs `accepted` (Yes), or the letter flag it sets    -> else proposal.html if open, else index.html
-  //   memories, inbox  need the unlock the reply sets (a saved reply heals a missing flag) -> else letter.html / proposal.html / index.html
+  //   memories  needs `accepted` (Yes) - the letter is delivered there -> else proposal.html if open, else index.html
+  //   inbox     needs the reply (a saved reply heals a missing flag)    -> else memories.html / proposal.html / index.html
   //   login     the one page that is for logged-OUT visitors: logged in -> her furthest page; no account -> index.html
   // The target is never the page itself, so there is no loop: each fallback is strictly "earlier" in the flow
   // (memories -> letter -> proposal -> index), and index.html and login's onward target are never guarded by a
@@ -144,11 +148,17 @@
       }
       if (FLOW.indexOf(page) < 0 || Progress.isUnlocked(page)) return null;
       if (page === "proposal") return "index.html";
-      if (page === "letter") return Progress.isAccepted() ? (Progress.unlock("letter"), null) : (Progress.isUnlocked("proposal") ? "proposal.html" : "index.html");
-      // memories / inbox
+      // memories: saying Yes is enough, because the letter is waiting there. "letter" is kept as an alias so an
+      // older link or a saved flag still resolves somewhere real.
+      if (page === "memories" || page === "letter") {
+        if (!Progress.isAccepted()) return Progress.isUnlocked("proposal") ? "proposal.html" : "index.html";
+        Progress.unlock("letter"); Progress.unlock("memories");
+        return null;
+      }
+      // inbox: still waits for the reply, and a saved reply heals a missing flag
       const rep = Store.getJSON(KEYS.reply, null);
-      if (rep && typeof rep === "object" && Progress.isUnlocked("letter")) { Progress.unlock("memories"); Progress.unlock("inbox"); return null; }
-      return Progress.isUnlocked("letter") ? "letter.html" : (Progress.isUnlocked("proposal") ? "proposal.html" : "index.html");
+      if (rep && typeof rep === "object") { Progress.unlock("inbox"); return null; }
+      return Progress.isAccepted() ? "memories.html" : (Progress.isUnlocked("proposal") ? "proposal.html" : "index.html");
     },
     // true = stay; false = she is being redirected (location.replace, so the guarded URL isn't left in history)
     require(page) {
@@ -270,7 +280,7 @@
   document.addEventListener("click", onLinkClick);
   window.addEventListener("pageshow", () => { Chrome.restore(); Chrome.refresh(); });
 
-  // ---- drifting dust and petals (decorative #air); ONE implementation shared by index.html and letter.html ----
+  // ---- drifting dust and petals (decorative #air); ONE implementation shared by the gate, sign-up and memories ----
   S.Air = {
     init() {
       const air = byId("air");

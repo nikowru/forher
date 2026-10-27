@@ -90,7 +90,7 @@ const CONFIG = {
     beatMs: 2400,            // pause between line 1 and line 2
     buttonsDelayMs: 2800,    // pause after line 2 before Yes / No appear
     dodgesBeforeCheeky: 4,   // after this many dodges No shrinks, Yes grows and the cheeky line appears (once)
-    yesBeatMs: 2800,         // after Yes: celebration + confirmation shown this long before fading to letter.html
+    yesBeatMs: 2800,         // after Yes: celebration + confirmation shown this long before fading to memories.html
     yesBeatReducedMs: 900    // the same beat under reduced motion
   },
   // read aloud by screen readers only
@@ -107,12 +107,11 @@ const CONFIG = {
   site: {
     brand: "For you",
     footer: "Made with love, just for you",
-    titles: { letter: "A letter for you", memories: "Our memories", inbox: "What you wrote" },
-    nav: { letter: "Letter", memories: "Memories", inbox: "Inbox" },
+    titles: { memories: "Our memories", inbox: "What you wrote" },
+    nav: { memories: "Memories", inbox: "Inbox" },
     // shown (in the footer line) when she clicks a page that isn't open yet
     locked: {
-      letter: "This one opens once you've said yes.",
-      memories: "This one opens once you've written back.",
+      memories: "This one opens once you've said yes.",
       inbox: "This one opens once you've written back."
     },
     labels: { pages: "Pages", inbox: "Inbox", inboxNew: "Inbox, 1 new", theme: "Switch theme" }
@@ -212,8 +211,7 @@ const CONFIG = {
     nudge: "Say anything, or leave it blank — I'll still see this.",
     inboxTitle: "What you wrote",
     inboxEmpty: "Nothing here yet.",
-    placeholder: "Write something here...",
-    toMemories: "Open our memories"
+    placeholder: "Write something here..."
   }
 };
 

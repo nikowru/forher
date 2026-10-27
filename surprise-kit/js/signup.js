@@ -205,5 +205,5 @@
     });
   }
 
-  // the drifting dust and petals (#air) are drawn by js/common.js (Surprise.Air), shared with letter.html
+  // the drifting dust and petals (#air) are drawn by js/common.js (Surprise.Air), shared with the other pages
 })();

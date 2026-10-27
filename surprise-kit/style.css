@@ -47,6 +47,25 @@ body::after{content:"";position:fixed;inset:0;z-index:29;pointer-events:none;bac
    grows to fill it, so the scene stays centred in the space between the chrome at any window size; if the
    window is genuinely too short the page simply scrolls instead of cutting anything off. */
 .letter-main{display:flex;flex-direction:column;overflow-x:clip}
+/* The letter as an overlay on memories.html. It is a fixed layer the size of the viewport with the
+   stage centred inside it, so #stage keeps every rule it already had (the fall, the unfold, the
+   dim, the fold) without knowing it has moved. The dim itself is #stage::after, already
+   position:fixed, so it covers the gallery, header and footer exactly as it covered the old page.
+   z-index 30 sits under that dim (31) and under the lifted foreground (32) - the same stack as before. */
+.letter-over{position:fixed;inset:0;z-index:30;display:grid;place-items:center;overflow-y:auto}
+.letter-over .stage{width:100%;min-height:100%;box-sizing:border-box}
+/* handing the page back: the whole layer fades as the gallery lights up underneath */
+.letter-over.leaving{opacity:0;transition:opacity .7s ease;pointer-events:none}
+/* While the letter is up the gallery is visible but held: js/letter.js also sets inert, which is what
+   actually blocks clicks and Tab. The blur is doing real work, not decoration - the gallery heading is a
+   big script face and so is the letter's, and dimmed alone they collided and neither could be read. Blurring
+   pushes the gallery behind the glass so it still reads as "my memories are back there" without competing.
+   The header is deliberately NOT blurred: the theme and music buttons stay usable through the dim. */
+body.letter-open .site-main{pointer-events:none;filter:blur(4px) saturate(.9);transition:filter .9s ease}
+.site-main{transition:filter .9s ease}
+@media (prefers-reduced-motion:reduce){
+  .letter-over.leaving{transition:none}
+  body.letter-open .site-main,.site-main{transition:none}}
 .stage{position:relative;flex:1 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3vh;padding:2vh 4vw}
 /* the soft glow reaches 30% past the scene (was 45%) so it never adds scroll height above the footer */
 .letter-main .scene::before{inset:-30%}
@@ -610,7 +629,7 @@ html:has(.lg-confirm[open]){overflow:hidden}
 
 /* Phase 5 PA7: proposal.html, the question page. Full-screen, centred, no header/footer (only #theme + #mute float on top).
    Surface: the usual theme background under a deep shade (rgba(var(--sh)) is the same dim language as #stage::after on
-   letter.html, here baked into body's background so the drifting #air hearts stay visible above it). Text colour is
+   the letter, here baked into body's background so the drifting #air hearts stay visible above it). Text colour is
    --paper in BOTH themes (cream in light, near-white in dark): the dimmed surface is dark enough for it in each. */
 body.proposal{background:linear-gradient(rgba(var(--sh),.84),rgba(var(--sh),.84)),radial-gradient(ellipse at 50% 38%,var(--bg-hi),var(--bg) 70%),var(--bg)}
 body.proposal{--pr-glow:20%}

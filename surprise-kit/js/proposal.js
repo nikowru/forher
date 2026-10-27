@@ -1,4 +1,5 @@
-// Proposal page (proposal.html): the two-line reveal, the dodging No, the escalation, and Yes -> letter.html.
+// Proposal page (proposal.html): the two-line reveal, the dodging No, the escalation, and Yes -> memories.html,
+// where the letter is waiting as an overlay.
 // ALL wording and tunables live in js/config.js (CONFIG.proposal for wording/timing/threshold, Surprise.PR_NO for the
 // No button's retune); edit them there, not here.
 // Classic script; needs js/config.js, js/common.js, js/api.js and js/nodge.js first.
@@ -113,8 +114,8 @@
     later(showButtons, P.firstLineDelayMs + P.beatMs + P.buttonsDelayMs);
   }
 
-  // ---- Yes: celebrate, swap the text, save `accepted`, fade to letter.html ----
-  // Acceptance is saved BEFORE navigating (letter.html's guard needs `accepted`): Progress.accept() writes it on this
+  // ---- Yes: celebrate, swap the text, save `accepted`, fade to memories.html ----
+  // Acceptance is saved BEFORE navigating (the memories guard needs `accepted`): Progress.accept() writes it on this
   // device straight away (so she can never bounce back), then Api.saveProgress() sends it to the account (the server,
   // in Phase B). If the account call fails she still goes on; the device copy is the one the guard reads.
   function onYes() {
@@ -131,7 +132,7 @@
     $("pr-cheeky").hidden = true;
     const beat = new Promise(res => setTimeout(res, reduceMotion.matches ? P.yesBeatReducedMs : P.yesBeatMs));
     const cap = new Promise(res => setTimeout(res, 2500)); // never wait on the account for longer than this
-    Promise.all([beat, Promise.race([saved, cap])]).then(() => Chrome.go("letter.html"));
+    Promise.all([beat, Promise.race([saved, cap])]).then(() => Chrome.go("memories.html"));
   }
   yes.addEventListener("click", onYes);
 

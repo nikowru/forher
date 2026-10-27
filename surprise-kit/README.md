@@ -10,11 +10,10 @@ She moves through them in order, and each one unlocks the next. Opening one earl
 
 | Page | What it is |
 |---|---|
-| `index.html` | The sign-up: her name, a secret word, mood, icon and music. Once an account exists, this sends her to the login instead. |
-| `login.html` | "Welcome back" — her username and secret word, so she can pick up where she left off |
+| `index.html` | The gate: signing in on one side, an invitation through to signing up on the other |
+| `signup.html` | Her name, a secret word, a mood and an avatar |
 | `proposal.html` | "will you be my baby forever?" — the reveal, the dodging No, and the Yes |
-| `letter.html` | The letter falling in, the notification, the seal, and her reply |
-| `memories.html` | The clip inventory, with collection tabs and the video player |
+| `memories.html` | The clip inventory, with collection tabs and the video player. The letter arrives here too: the notification pops, the envelope falls in over the dimmed gallery, and once she's replied it hands the page back. |
 | `inbox.html` | What she wrote, kept for her to re-read |
 
 ### Everything else
@@ -57,7 +56,7 @@ To try the other theme, use the sun/moon button in the top right. To reset to "f
 
 To start the whole thing over while testing, add `?reset=1` to the address, e.g. `http://localhost:3000/?reset=1`. That clears her answers, her reply and which pages she's unlocked, and puts her back on a fresh sign-up — but it deliberately keeps your light/dark choice.
 
-Because the pages unlock in order, opening `letter.html` or `memories.html` directly before she's got there will just send you back to the right page. That's the guard working, not a bug.
+Because the pages unlock in order, opening `memories.html` or `inbox.html` directly before she's got there will just send you back to the right page. That's the guard working, not a bug.
 
 ## Edit the wording
 

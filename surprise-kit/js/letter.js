@@ -1,22 +1,36 @@
-// Letter page (letter.html): guard, wording, intro dim-and-unfold, seal -> letter, reply (soft confirm), fold into the
-// header inbox, light-up, then the "open our memories" link. Classic script; needs js/config.js and js/common.js first.
-// Returning visitor (reply already saved): no intro, no dim; the letter is shown open with her reply read-only and
-// #to-memories visible straight away.
+// The letter, delivered as an overlay on the memories page (#letter-over in memories.html): the notification
+// pops, the envelope falls in over a dimmed, inert gallery, then seal -> letter -> reply (soft confirm) -> fold
+// into the header inbox -> the light-up, which hands the page back to the gallery underneath.
+// Classic script; needs js/config.js, js/common.js and js/memories.js first.
+//
+// Once she has replied it never shows at all: the gallery is simply there, lit, and js/memories.js runs alone.
+// That is why there is no returning-visitor branch here any more - the old letter.html had one because the
+// letter WAS the page; here, "already replied" just means no overlay.
 (function () {
   const S = window.Surprise;
   if (!S || !S.Store || !S.Guard) return;
   const { Store, Progress, CONFIG, KEYS } = S;
   const $ = id => document.getElementById(id);
+  const over = $("letter-over");
   const stage = $("stage"), scene = $("scene"), seal = $("seal"), letter = $("letter"), text = $("text");
-  if (!stage || !scene || !seal || !letter || !text || !$("reply-form")) return;
-  if (!S.Guard.require("letter")) return; // not signed up: being sent to index.html, so do not initialise
+  if (!over || !stage || !scene || !seal || !letter || !text || !$("reply-form")) return; // not the host page
+  if (S.Guard.target("memories")) return;        // she does not belong here; memories.js is already redirecting
+  if (Store.getJSON(KEYS.reply, null)) return;   // already written: no overlay, the gallery stands alone
+
+  const host = $("main"), nav = document.querySelector(".hdr-nav");
+  // the gallery is visible the whole time but must not be clickable or tabbable behind the letter
+  const holdPage = on => {
+    document.body.classList.toggle("letter-open", on);
+    [host, nav].forEach(el => { if (el) el.inert = on; });
+  };
+  over.hidden = false;
+  holdPage(true);
 
   const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
   const R = CONFIG.reply;
 
   // ---- wording (all from CONFIG) ----
-  document.title = CONFIG.site.titles.letter;
-  $("title").textContent = CONFIG.heading;
+  $("title").textContent = CONFIG.heading; // the page title stays "Our memories": this is a layer on that page
   $("hint").textContent = CONFIG.hint;
   seal.setAttribute("aria-label", CONFIG.labels.seal);
   CONFIG.letter.forEach(t => { const p = document.createElement("p"); p.textContent = t; text.appendChild(p); });
@@ -24,7 +38,6 @@
   $("reply-text").placeholder = R.placeholder;
   $("reply-submit").textContent = R.submit;
   $("reply-nudge").textContent = R.nudge;
-  $("to-memories").textContent = R.toMemories;
 
   // a long letter scrolls inside the paper; let keyboard users reach it too
   function makeScrollable() {
@@ -32,26 +45,6 @@
     text.tabIndex = 0; text.setAttribute("role", "region"); text.setAttribute("aria-label", CONFIG.labels.letter);
     const more = () => text.classList.toggle("more", text.scrollTop + text.clientHeight < text.scrollHeight - 2);
     text.addEventListener("scroll", more, { passive: true }); more();
-  }
-
-  const saved = Store.getJSON(KEYS.reply, null);
-  const replied = !!(saved && typeof saved === "object");
-
-  if (replied) {
-    // ---- returning visitor: show the finished state, no replay ----
-    scene.classList.add("open", "flapback", "rise", "read");
-    seal.classList.add("broken"); seal.disabled = true;
-    $("title").classList.add("fade"); $("hint").classList.add("fade");
-    makeScrollable();
-    letter.inert = false;
-    const rt = $("reply-text");
-    rt.value = typeof saved.text === "string" ? saved.text : "";
-    rt.readOnly = true; $("reply-submit").hidden = true;
-    scene.classList.add("gone"); // same as after the fold: the paper is put away; the link takes over
-    scene.inert = true;
-    const link = $("to-memories"); link.hidden = false;
-    link.focus({ preventScroll: true });
-    return;
   }
 
   // ---- intro: dim the page, let the letter fall and the decorations unfold (pure CSS, see #stage.intro-dim:not(.intro-pre)),
@@ -142,11 +135,19 @@
 
     letter.classList.add("folding"); // CSS shrinks it toward the header inbox icon
     setTimeout(() => {
-      stage.classList.remove("intro-dim");            // the light-up
+      stage.classList.remove("intro-dim");             // the light-up
       scene.classList.add("gone"); scene.inert = true; // paper put away, as the old reveal did
-      if (S.Chrome) S.Chrome.refresh();               // common.js owns the badge: the new unread reply shows now
-      const link = $("to-memories"); link.hidden = false;
-      link.focus({ preventScroll: true });            // keyboard users are not left on a vanished form
-    }, reduceMotion.matches ? 0 : 650); // matches #letter.folding's transition in style.css
+      if (S.Chrome) S.Chrome.refresh();                // common.js owns the badge: the new unread reply shows now
+      // hand the page back: the overlay fades out and the gallery underneath becomes hers
+      over.classList.add("leaving");
+      holdPage(false);
+      setTimeout(() => {
+        over.hidden = true;
+        over.classList.remove("leaving");
+        // keyboard users are not left on a vanished form: put them on the gallery that just lit up
+        const first = document.querySelector("#tabs .tab, #grid .slot, #main");
+        if (first) { if (!first.hasAttribute("tabindex") && first.id === "main") first.tabIndex = -1; first.focus({ preventScroll: true }); }
+      }, reduceMotion.matches ? 0 : 700); // matches .letter-over.leaving in style.css
+    }, reduceMotion.matches ? 0 : 650);   // matches #letter.folding's transition in style.css
   });
 })();
