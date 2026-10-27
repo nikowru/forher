@@ -235,8 +235,6 @@ html:has(.player[open]){overflow:hidden}
  box-shadow:inset 0 1px 0 var(--glass-hi),inset 0 -6px 12px -8px rgba(var(--sh),.5),0 10px 22px -8px rgba(var(--sh),.55)}
 .theme:active,.mute:active{transform:translateY(0) scale(.96)}
 .theme{right:16px;font-size:1.25rem}
-/* mute control (Phase 3 P4): shares the glass treatment above; only its slot and size differ */
-.mute{right:66px;font-size:1.1rem}
 @media (prefers-reduced-motion:reduce){.theme,.mute{transition:none}
  .theme:hover,.mute:hover,.theme:active,.mute:active{transform:none}}
 
@@ -366,21 +364,6 @@ html:has(.player[open]){overflow:hidden}
   .su-icon{animation:none;transition:none}
   .su-icon:hover,.su-icon:active,.su-icon[aria-pressed="true"]{transform:none}
   .su-icon[aria-pressed="true"]::after,.su-icon-upload.just-set{animation:none}}
-/* track list: a horizontal row of pill buttons (title + a music-note glyph via ::before,
-   currentColor so it follows .su-track's own text color/theme) instead of the old stacked
-   full-width list. Wraps on very narrow widths rather than forcing a scrollbar, since track
-   titles can run long. */
-.su-tracks{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center;min-height:48px}
-.su-tracks li{display:flex}
-.su-track{box-sizing:border-box;display:inline-flex;align-items:center;gap:.5rem;padding:.55rem 1.1rem;
- font:600 .95rem/1.2 'Quicksand',sans-serif;color:var(--ink);background:var(--tab);border:1.5px solid var(--slot-edge);border-radius:999px;cursor:pointer}
-.su-track::before{content:"\266A";font-size:1rem;line-height:1;color:currentColor}
-.su-track:hover{border-color:var(--accent)}
-/* same --btn ring as the moods/icons: with --tab-on's fill alone, a selected track in the dark
-   theme was indistinguishable from an unselected one - identical text colour, and its border
-   turned the card's own white (QA S5 follow-up). */
-.su-track[aria-selected="true"],.su-track.selected{color:var(--tab-on-ink);background:var(--tab-on);border-color:var(--btn);
- box-shadow:0 0 0 3px color-mix(in srgb,var(--btn) 45%,transparent)}
 /* gentle validation message (filled by script.js). NO display rule on purpose, so the hidden
    attribute keeps working - same caution as .reply-nudge. */
 .su-msg{margin:0;max-width:34ch;text-align:center;text-wrap:balance;font:600 1rem/1.4 'Quicksand',sans-serif;color:var(--ink)}
@@ -554,9 +537,6 @@ body.site{height:auto;min-height:100%;overflow:visible;display:flex;flex-directi
 .hdr-inbox::before{content:"\2709";font-size:1.15rem}
 .hdr-badge{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;border-radius:9px;
  font:700 .7rem/18px 'Quicksand',sans-serif;text-align:center;color:var(--btn-text);background:var(--btn);box-shadow:0 0 0 2px var(--paper)}
-/* "tap to resume music": shown by script when autoplay is blocked. NO display rule, so [hidden] works. */
-.hdr-resume{padding:.35rem .9rem;border:0;border-radius:999px;font:600 .85rem/1.3 'Quicksand',sans-serif;color:var(--btn-text);background:var(--btn);cursor:pointer}
-.hdr-resume:hover{filter:brightness(1.25)}
 .site-main{flex:1 0 auto;position:relative}
 .site-footer{flex:0 0 auto;padding:1.2rem 4vw calc(1.2rem + env(safe-area-inset-bottom,0px));text-align:center}
 /* small text on the teal sits on a paper label (same trick as .hint); invisible in dark */
@@ -817,18 +797,8 @@ body.proposal{--pr-glow:20%}
 .tunes-title{margin:0 0 .7rem;font:700 1.15rem/1.25 'Dancing Script',cursive;color:var(--btn)}
 .tunes-sub{margin:1rem 0 .5rem;font:600 .8rem/1.3 'Quicksand',sans-serif;
  color:color-mix(in srgb,var(--ink) 70%,transparent);text-transform:uppercase;letter-spacing:.04em}
-.tunes-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.4rem}
-.tunes-track{width:100%;text-align:left;padding:.55rem .8rem;border-radius:10px;cursor:pointer;
- font:600 .92rem/1.3 'Quicksand',sans-serif;color:var(--ink);
- background:color-mix(in srgb,var(--btn) 6%,transparent);
- border:1.5px solid color-mix(in srgb,var(--btn) 18%,transparent);
- transition:background .18s ease,border-color .18s ease,transform .18s ease}
-.tunes-track:hover{border-color:var(--btn);transform:translateX(2px)}
-/* the one the site is humming: filled, with a small note in front */
-.tunes-track[aria-pressed="true"]{color:var(--btn-text);background:var(--btn);border-color:var(--btn)}
-.tunes-track[aria-pressed="true"]::before{content:"\266A  "}
 .tunes-spotify iframe{display:block;border:0;border-radius:12px}
 @media (prefers-reduced-motion:reduce){
   .tunes-panel{animation:none}
-  .tunes-float,.tunes-track{transition:none}
-  .tunes-float:hover,.tunes-track:hover{transform:none}}
+  .tunes-float{transition:none}
+  .tunes-float:hover{transform:none}}

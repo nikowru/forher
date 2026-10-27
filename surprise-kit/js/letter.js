@@ -75,7 +75,7 @@
   }
   function playNotifSound() {
     // blank path = no request at all. Muted = silent. Any failure (missing file, autoplay block) is swallowed.
-    if (!N.sound || (S.Music && S.Music.isMuted())) return;
+    if (!N.sound) return;
     try {
       const a = new Audio(N.sound);
       a.volume = Math.max(0, Math.min(1, +N.volume || 0.4));

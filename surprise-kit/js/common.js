@@ -20,13 +20,13 @@
   //   surprise-schema   data-layout version (SCHEMA); a mismatch wipes the old keys once, see the migration below
   const KEYS = { signup: "surprise-signup", reply: "surprise-reply", pending: "surprise-pending-sends", muted: "surprise-muted", progress: "surprise-progress", music: "surprise-music", inboxSeen: "surprise-inbox-seen", account: "surprise-account", session: "surprise-session", avatar: "surprise-avatar", schema: "surprise-schema", theme: "theme" };
   S.KEYS = KEYS;
-  const RESET_KEYS = [KEYS.signup, KEYS.reply, KEYS.pending, KEYS.muted, KEYS.progress, KEYS.music, KEYS.inboxSeen, KEYS.account, KEYS.session, KEYS.avatar];
+  const RESET_KEYS = [KEYS.signup, KEYS.reply, KEYS.pending, KEYS.progress, KEYS.inboxSeen, KEYS.account, KEYS.session, KEYS.avatar];
   const SCHEMA = "2";
 
   // ---- reset: ?reset=1 OR #reset (also #reset=1) clears everything except `theme`. A hash is never sent to the server,
   // so it survives a dev server that strips the query. Runs here, before anything reads storage, on every page.
   // The flag is then stripped with replaceState so a reload does not wipe her progress again.
-  let resetting = false; // set by reset(): stops Music's pagehide save from writing the position straight back
+  let resetting = false; // set by reset(), so a page teardown cannot write cleared state straight back
   function clearAll() { RESET_KEYS.forEach(k => Store.remove(k)); }
   function hasResetFlag() {
     return /(?:^|[?&])reset=1(?:&|$)/.test(location.search) || /^#reset(?:=1)?$/.test(location.hash);
@@ -54,7 +54,7 @@
   // proposal, so it cannot be converted. On a missing/older schema value, wipe the old keys ONCE (keeping `theme` and
   // the mute preference), then stamp the version. She has not received the site yet, so nothing real is lost.
   if (Store.get(KEYS.schema, null) !== SCHEMA) {
-    [KEYS.signup, KEYS.reply, KEYS.pending, KEYS.progress, KEYS.inboxSeen, KEYS.music, KEYS.account, KEYS.session].forEach(k => Store.remove(k));
+    [KEYS.signup, KEYS.reply, KEYS.pending, KEYS.progress, KEYS.inboxSeen, KEYS.account, KEYS.session].forEach(k => Store.remove(k));
     Store.set(KEYS.schema, SCHEMA);
   }
 
@@ -180,149 +180,6 @@
     paint();
   }
 
-  // ---- music: one <audio> per page, resumed from the saved position after each navigation ----
-  // A real page change destroys the element, so every page re-creates it and seeks to the saved time
-  // (a short audible gap is unavoidable). Saved record: { id, time, muted, ts } under KEYS.music;
-  // KEYS.muted stays the source of truth for the mute preference.
-  const SAVE_EVERY_MS = 1500;
-  const labels = () => (S.CONFIG && S.CONFIG.music) || {};
-  let mutedPref = Store.get(KEYS.muted, null) === "1";
-  let audioEl = null, trackId = null, wantPlay = false, pendingSeek = null, lastSave = 0, blocked = false;
-  let muteBtn = null;
-
-  function tracks() { return Array.isArray(S.MUSIC) ? S.MUSIC : []; }
-  function emit(name) { try { document.dispatchEvent(new CustomEvent(name)); } catch (e) { /* no CustomEvent: signal is also on Music.blocked */ } }
-
-  function setBlocked(v) {
-    if (blocked === v) return;
-    blocked = v; Music.blocked = v;
-    if (v) armGesture();
-    emit("surprise:music-blocked-change");
-  }
-  // while blocked, the next real gesture anywhere retries play() (the header's tap button just calls Music.resume())
-  let gestureArmed = false;
-  function armGesture() {
-    if (gestureArmed) return;
-    gestureArmed = true;
-    const go = () => {
-      document.removeEventListener("pointerdown", go, true); document.removeEventListener("keydown", go, true);
-      gestureArmed = false;
-      if (blocked) Music.resume();
-    };
-    document.addEventListener("pointerdown", go, true); document.addEventListener("keydown", go, true);
-  }
-
-  function getAudioEl() {
-    if (audioEl) return audioEl;
-    audioEl = document.createElement("audio");
-    audioEl.loop = true; audioEl.volume = 0.15; audioEl.muted = mutedPref;
-    audioEl.addEventListener("error", () => {}); // a missing placeholder track must never throw or block the UI
-    audioEl.addEventListener("loadedmetadata", applySeek);
-    audioEl.addEventListener("playing", () => setBlocked(false));
-    audioEl.addEventListener("timeupdate", () => { if (Date.now() - lastSave >= SAVE_EVERY_MS) save(); });
-    (document.body || document.documentElement).appendChild(audioEl);
-    return audioEl;
-  }
-
-  function applySeek() {
-    if (pendingSeek === null || !audioEl) return;
-    const d = audioEl.duration;
-    let t = pendingSeek;
-    if (!isFinite(t) || t < 0 || (isFinite(d) && d > 0 && t >= d)) t = 0; // past the end (or junk): wrap to the start
-    pendingSeek = null;
-    try { audioEl.currentTime = t; } catch (e) { /* not seekable yet */ }
-  }
-
-  function save() {
-    if (!trackId || resetting) return;
-    lastSave = Date.now();
-    // While autoplay is blocked the seek never lands, so currentTime sits at 0 - saving that
-    // would throw away where she actually was. pendingSeek still holds the real position.
-    const live = audioEl && isFinite(audioEl.currentTime) ? audioEl.currentTime : 0;
-    const t = pendingSeek !== null && isFinite(pendingSeek) ? pendingSeek : live;
-    Store.setJSON(KEYS.music, { id: trackId, time: Math.round(t * 10) / 10, muted: mutedPref, ts: lastSave });
-  }
-
-  function tryPlay() {
-    if (!audioEl) return Promise.resolve(false);
-    let p;
-    try { p = audioEl.play(); } catch (e) { return Promise.resolve(false); }
-    if (!p || typeof p.then !== "function") return Promise.resolve(true);
-    return p.then(() => { setBlocked(false); return true; }, err => {
-      // only a real autoplay refusal counts as "needs a tap"; a missing/unsupported file or an aborted load does not
-      if (err && err.name === "NotAllowedError") setBlocked(true);
-      return false;
-    });
-  }
-
-  function paintMute() {
-    if (!muteBtn) return;
-    const L = labels();
-    muteBtn.textContent = mutedPref ? "\u{1F507}" : "\u{1F50A}";
-    muteBtn.setAttribute("aria-pressed", String(mutedPref));
-    muteBtn.setAttribute("aria-label", (mutedPref ? L.unmute : L.mute) || (mutedPref ? "Unmute music" : "Mute music"));
-  }
-
-  const Music = {
-    blocked: false,
-    // start (or switch to) a track. With no explicit `time`, resumes the saved position if the saved record is for this same track.
-    start(id, time) {
-      const list = tracks();
-      const track = list.find(m => m.id === id) || list[0];
-      if (!track) return Promise.resolve(false);
-      const el = getAudioEl();
-      const changed = trackId !== track.id || el.getAttribute("src") !== track.file;
-      trackId = track.id; wantPlay = true;
-      if (changed) {
-        let t = time;
-        if (t === undefined) { const rec = Store.getJSON(KEYS.music, null); t = rec && rec.id === track.id && typeof rec.time === "number" ? rec.time : 0; }
-        pendingSeek = t > 0 ? t : null;
-        el.src = track.file;
-        if (el.readyState > 0) applySeek();
-      }
-      return tryPlay();
-    },
-    // retry play() after a block; call from a user gesture (e.g. the header's "tap to resume" button)
-    resume() { return audioEl && trackId ? tryPlay() : Promise.resolve(false); },
-    pause() { wantPlay = false; if (audioEl) try { audioEl.pause(); } catch (e) { /* ignore */ } save(); },
-    isMuted() { return mutedPref; },
-    setMuted(m) {
-      mutedPref = !!m;
-      if (audioEl) audioEl.muted = mutedPref;
-      Store.set(KEYS.muted, mutedPref ? "1" : "0");
-      paintMute(); save();
-      emit("surprise:music-mute-change");
-      if (!mutedPref) Music.resume(); // un-muting is a user gesture; worth another try
-    },
-    toggleMute() { Music.setMuted(!mutedPref); return mutedPref; },
-    currentTrack() { return trackId; },
-    // the header can subscribe: cb(blocked) fires whenever the autoplay-blocked state changes
-    onBlockedChange(cb) { document.addEventListener("surprise:music-blocked-change", () => cb(blocked)); },
-    // wire a mute button (a page's header button); with no argument, uses #mute or creates a floating one
-    bindMuteButton(btn) {
-      if (!btn) return null;
-      muteBtn = btn;
-      btn.addEventListener("click", () => Music.toggleMute());
-      paintMute();
-      return btn;
-    },
-    ensureMuteButton() {
-      if (muteBtn) return muteBtn;
-      let b = document.getElementById("mute");
-      if (!b) {
-        b = document.createElement("button");
-        b.type = "button"; b.id = "mute"; b.className = "mute";
-        document.body.appendChild(b);
-      }
-      return Music.bindMuteButton(b);
-    }
-  };
-  S.Music = Music;
-
-  // save on pagehide and when the tab is hidden (mobile/Safari often fire only the latter); timeupdate covers the rest
-  window.addEventListener("pagehide", save);
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") save(); });
-
   // ---- shared chrome: header / footer wiring, locked nav, fade-on-navigate ----
   // Everything is guarded by element lookups, so on index.html (no header) it quietly does nothing.
   const FADE_MS = 200; // matches `body.page-leaving` in style.css
@@ -407,17 +264,6 @@
     const th = byId("hdr-theme"); if (th && c.labels && c.labels.theme) th.setAttribute("aria-label", c.labels.theme);
     if (cur === "inbox" && Progress.isUnlocked("inbox")) Store.set(KEYS.inboxSeen, "1"); // visiting the inbox = seen
     Chrome.refresh();
-    // header music controls (bound before ensureMuteButton so it never makes a second, floating mute button)
-    Music.bindMuteButton(byId("hdr-mute"));
-    const rs = byId("hdr-resume");
-    if (rs) {
-      const L = labels();
-      if (L.resume) rs.textContent = L.resume;
-      const paintResume = b => { rs.hidden = !b; };
-      rs.addEventListener("click", () => { Music.resume(); });
-      Music.onBlockedChange(paintResume);
-      paintResume(Music.blocked);
-    }
     window.addEventListener("storage", Chrome.refresh); // another tab unlocked something
   }
   // links work on every page (index.html has none to intercept); bfcache restore must not stay faded
@@ -440,15 +286,14 @@
   };
 
   // resume after a navigation: a saved record means a track was playing on the previous page
-  // ---- the music panel: switch the background track, and the Spotify playlist if one is set -----
-  // Sits with the other controls top right, so it is reachable from every page. The list changes
-  // what the site hums (real audio files, which survive a page change); the embed below it is a
-  // visible player she presses herself, because a Spotify iframe cannot be the background music.
+  // ---- the music panel: the Spotify playlist, reachable from every page ---------------------
+  // Deliberately a player she presses herself. An embed is an iframe, so it stops on every page
+  // change and will not play hidden - there is no background soundtrack to pair it with.
   const Tunes = {
     build() {
       const cfg = (S.CONFIG && S.CONFIG.music) || {};
-      const list = Array.isArray(S.MUSIC) ? S.MUSIC : [];
-      if (!list.length) return;
+      const embed = Tunes.spotify(cfg);
+      if (!embed) return; // no playlist configured: no button, no panel
 
       const btn = document.createElement("button");
       btn.type = "button"; btn.id = "tunes"; btn.className = "tunes";
@@ -463,26 +308,12 @@
       const panel = document.createElement("div");
       panel.className = "tunes-panel"; panel.id = "tunes-panel"; panel.hidden = true;
       panel.setAttribute("role", "dialog"); panel.setAttribute("aria-label", cfg.panelTitle || "Music");
-
-      const h = document.createElement("p");
-      h.className = "tunes-title"; h.textContent = cfg.panelTitle || "";
-      panel.appendChild(h);
-
-      const ul = document.createElement("ul");
-      ul.className = "tunes-list";
-      list.forEach(tr => {
-        const li = document.createElement("li");
-        const b = document.createElement("button");
-        b.type = "button"; b.className = "tunes-track"; b.dataset.id = tr.id;
-        b.setAttribute("aria-pressed", "false");
-        b.textContent = tr.title || tr.id;
-        b.addEventListener("click", () => { Music.start(tr.id); Tunes.paint(); });
-        li.appendChild(b); ul.appendChild(li);
-      });
-      panel.appendChild(ul);
-
-      const embed = Tunes.spotify(cfg);
-      if (embed) panel.appendChild(embed);
+      if (cfg.panelTitle) {
+        const h = document.createElement("p");
+        h.className = "tunes-title"; h.textContent = cfg.panelTitle;
+        panel.appendChild(h);
+      }
+      panel.appendChild(embed);
       document.body.appendChild(panel);
 
       const close = () => { panel.hidden = true; btn.setAttribute("aria-expanded", "false"); };
@@ -491,14 +322,12 @@
         const open = panel.hidden;
         panel.hidden = !open;
         btn.setAttribute("aria-expanded", String(open));
-        if (open) { Tunes.paint(); const f = panel.querySelector(".tunes-track"); if (f) f.focus(); }
       });
       document.addEventListener("click", e => {
         if (panel.hidden) return;
         if (!panel.contains(e.target) && e.target !== btn) close();
       });
       document.addEventListener("keydown", e => { if (e.key === "Escape" && !panel.hidden) { close(); btn.focus(); } });
-      Tunes.paint();
     },
 
     // Accepts a share link or a bare id. Returns null when nothing is configured.
@@ -509,28 +338,13 @@
       if (!m) return null;
       const wrap = document.createElement("div");
       wrap.className = "tunes-spotify";
-      if (cfg.playlistTitle) {
-        const t = document.createElement("p");
-        t.className = "tunes-sub"; t.textContent = cfg.playlistTitle;
-        wrap.appendChild(t);
-      }
       const f = document.createElement("iframe");
       f.src = "https://open.spotify.com/embed/playlist/" + m[1] + "?utm_source=generator";
-      f.width = "100%"; f.height = "232"; f.loading = "lazy"; f.frameBorder = "0";
+      f.width = "100%"; f.height = "352"; f.loading = "lazy"; f.frameBorder = "0";
       f.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
-      f.setAttribute("title", cfg.playlistTitle || "Spotify");
+      f.setAttribute("title", cfg.panelTitle || "Spotify");
       wrap.appendChild(f);
       return wrap;
-    },
-
-    paint() {
-      const now = Music.currentTrack();
-      const cfg = (S.CONFIG && S.CONFIG.music) || {};
-      document.querySelectorAll(".tunes-track").forEach(b => {
-        const on = b.dataset.id === now;
-        b.setAttribute("aria-pressed", String(on));
-        b.title = on ? (cfg.nowPlaying || "") : "";
-      });
     }
   };
   S.Tunes = Tunes;
@@ -538,10 +352,7 @@
   function init() {
     initChrome();
     S.Air.init();
-    Music.ensureMuteButton();
     Tunes.build();
-    const rec = Store.getJSON(KEYS.music, null);
-    if (rec && typeof rec === "object" && typeof rec.id === "string") Music.start(rec.id); // unknown id falls back to the first track
   }
   if (document.body) init(); else document.addEventListener("DOMContentLoaded", init);
 })();

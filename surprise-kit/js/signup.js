@@ -4,7 +4,7 @@
 (function () {
   const S = window.Surprise;
   if (!S || !S.Store || !S.Chrome || !S.Api) return;
-  const { Store, Music, Api, CONFIG, MOODS, ICONS, MUSIC } = S;
+  const { Store, Api, CONFIG, MOODS, ICONS } = S;
   const $ = id => document.getElementById(id);
   const signupSection = $("signup");
   if (!signupSection || !$("su-form") || !$("su-continue") || !$("su-msg")) return;
@@ -40,7 +40,7 @@
     setText("su-music-label", CONFIG.signup.musicLabel);
     setText("su-continue", CONFIG.signup.continue);
 
-    let selectedMood = null, selectedIconId = null, selectedTrackId = null;
+    let selectedMood = null, selectedIconId = null;
 
     function renderMoods() {
       const box = $("su-moods");
@@ -143,25 +143,8 @@
       });
     }
 
-    function renderTracks() {
-      const list = $("su-tracks");
-      list.replaceChildren(...MUSIC.map(tr => {
-        const li = document.createElement("li"), b = document.createElement("button");
-        b.type = "button"; b.className = "su-track"; b.dataset.id = tr.id;
-        b.setAttribute("aria-selected", "false"); b.textContent = tr.title;
-        li.append(b);
-        return li;
-      }));
-      list.addEventListener("click", e => {
-        const b = e.target.closest(".su-track"); if (!b) return;
-        for (const o of list.querySelectorAll(".su-track")) o.setAttribute("aria-selected", "false");
-        b.setAttribute("aria-selected", "true"); selectedTrackId = b.dataset.id; signupFixed("music");
-      });
-    }
 
-    renderMoods(); renderIcons(); renderTracks();
-
-    // gentle validation (Continue with something missing): a sweet message in #su-msg + a highlight on the step, never an alert
+    renderMoods(); renderIcons(); // gentle validation (Continue with something missing): a sweet message in #su-msg + a highlight on the step, never an alert
     const stepEl = key => document.querySelector('.su-step[data-step="' + key + '"]');
     const showMsg = text => { $("su-msg").textContent = text; $("su-msg").hidden = false; };
     function signupFixed(key) { // she filled it in: drop that highlight, and the message once nothing is left to fix
@@ -176,15 +159,11 @@
       if (!$("su-secret").value.trim()) return { key: "secret", focus: $("su-secret") };
       if (!selectedMood) return { key: "mood", focus: document.querySelector("#su-moods .su-mood") };
       if (!selectedIconId) return { key: "icon", focus: document.querySelector("#su-icons .su-icon") };
-      if (!selectedTrackId) return { key: "music", focus: document.querySelector("#su-tracks .su-track") };
       return null;
     }
 
-    // ---- submit: create the account, start the music, fade on to proposal.html ----
-    // Music.start happens here (her first real gesture) rather than on the next page, so autoplay is most likely
-    // allowed and the next page's resume works. Chrome.go (js/common.js) is the one fade-then-navigate
-    // implementation (immediate under reduced motion). proposal.html is built by a later task.
-    let submitting = false;
+    // ---- submit: create the account, then fade on to proposal.html ----
+        let submitting = false;
     $("su-form").addEventListener("submit", e => {
       e.preventDefault();
       if (submitting) return;
@@ -194,13 +173,13 @@
         stepEl(missing.key).classList.add("su-missing");
         showMsg(CONFIG.signup.missing[missing.key]);
         if (missing.focus) missing.focus.focus();
-        return; // nothing saved, no music, stays on the card
+        return; // nothing saved, stays on the card
       }
       submitting = true;
       const btn = $("su-continue");
       btn.disabled = true; btn.setAttribute("aria-busy", "true"); btn.textContent = CONFIG.signup.loading; // no double-submit; she sees it working
       const username = $("su-username").value.trim();
-      const answers = { username, secret: $("su-secret").value, mood: selectedMood, iconId: selectedIconId, musicId: selectedTrackId };
+      const answers = { username, secret: $("su-secret").value, mood: selectedMood, iconId: selectedIconId };
       Api.signup(answers).then(r => {
         if (!r.ok) {
           if (r.error === "exists") { location.replace("index.html"); return; } // an account appeared meanwhile: she logs in instead
@@ -210,8 +189,7 @@
           return;
         }
         // keep a small non-secret copy of her answers for the pages that still read it (the secret is never stored here)
-        Store.setJSON(S.KEYS.signup, { username, mood: selectedMood, iconId: selectedIconId, musicId: selectedTrackId });
-        Music.start(selectedTrackId); // only start playback after an actual completed sign-up interaction
+        Store.setJSON(S.KEYS.signup, { username, mood: selectedMood, iconId: selectedIconId });
         S.Chrome.go("proposal.html");
       });
     });

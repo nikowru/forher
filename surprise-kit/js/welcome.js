@@ -7,7 +7,7 @@
 (function () {
   const S = window.Surprise;
   if (!S || !S.Store || !S.Chrome || !S.Api) return;
-  const { Api, Music, Session, Progress, Guard, CONFIG } = S;
+  const { Api, Session, Progress, Guard, CONFIG } = S;
   const L = CONFIG.login, W = CONFIG.welcome;
   const $ = id => document.getElementById(id);
   const gate = $("gate");
@@ -97,9 +97,7 @@
           } else showMsg(L.network);
           return;
         }
-        // resume her music (chosen at sign-up); the saved position is picked up when it is the same track
         const prof = r.profile || {};
-        if (prof.musicId) Music.start(prof.musicId);
         S.Chrome.go(Guard.onward());
       });
     });
@@ -117,7 +115,6 @@
     dlg.addEventListener("close", () => { (dlg.returnValue === "fresh" ? username : resetBtn).focus(); }); // focus back: Esc, No and Yes alike
     $("lg-confirm-yes").addEventListener("click", () => {
       Api.logout();        // clears the session only; the account and the saved answers are untouched
-      Music.pause();
       username.value = ""; secret.value = ""; clearMsg(); unmark();
       dlg.close("fresh");
     });

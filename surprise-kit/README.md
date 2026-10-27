@@ -22,14 +22,14 @@ She moves through them in order, and each one unlocks the next. Opening one earl
 | File | What it holds |
 |---|---|
 | `style.css` | All styling for every page. Both color themes are CSS variables at the top. |
-| `js/config.js` | **Edit wording here.** The `CONFIG` block, plus the `ICONS`, `MOODS` and `MUSIC` lists and the No-button tunables. |
+| `js/config.js` | **Edit wording here.** The `CONFIG` block, plus the `ICONS` and `MOODS` lists, the Spotify playlist link and the No-button tunables. |
 | `js/common.js` | Shared behavior: storage, progress and page guards, music across pages, the header and footer, page fades, `?reset=1` |
 | `js/api.js` | Every read and write goes through here. Blank URL = it all stays in her browser; URL set = the Sheet is the only store. |
 | `js/nodge.js` | The dodging "No" button |
 | `js/signup.js`, `js/login.js`, `js/proposal.js`, `js/letter.js`, `js/memories.js`, `js/inbox.js` | One file per page, loaded only by that page |
 | `clips.json` | Fallback clip list, used if the Memories sheet isn't set up (or its fetch fails) |
 | `assets/icons/` | Icon images for the sign-up "choose an icon" step |
-| `assets/music/` | Audio tracks for the sign-up "choose your music" step |
+| `SPOTIFY_PLAYLIST` (in `js/config.js`) | Your playlist, shown in the music panel — see "Music" below |
 | `assets/favicon.svg` | The little envelope in the tab |
 | `backend/Code.gs` | The optional Google Apps Script backend — see "Save her answers to a Google Sheet" below |
 | `docs/backend-setup.md` | Step-by-step setup for the Sheet + Apps Script |
@@ -77,7 +77,7 @@ const CONFIG = {
              finalQuestion, yes, no, missing: { username, mood, icon, music } }, // sign-up card + its gentle prompts
   intro:   { heading },                 // "uy may love note!" — shown right after sign-up
   reply:   { label, placeholder, submit, nudge, toMemories, inboxTitle, inboxEmpty }, // reply lines + inbox page
-  music:   { resume, mute, unmute },    // the header's music buttons
+  music:   { pick, panelTitle },        // the music button and its panel
   site:    { brand, footer, titles: {...}, nav: {...}, locked: {...}, labels: {...} } // header, footer, tab titles
 };
 ```
@@ -102,16 +102,15 @@ const ICONS = [
 
 Drop your own image files into `assets/icons/` and point `file` at them (any image format works — svg, png, jpg). `label` is read aloud by screen readers, so make it describe the icon, not just a number. `id` is what gets saved/sent, so keep it unique and stable once she's used the site.
 
-**Music** (the "choose your music" list): edit the `MUSIC` array the same way, just below `ICONS`:
+**Music** is a Spotify playlist, reachable from the ♫ button in the top-right corner of every page. Paste your playlist's share link into `js/config.js`:
 
 ```js
-const MUSIC = [
-  { id: "track-1", title: "Track 1 (placeholder)", file: "assets/music/track-1.wav" },
-  // ...
-];
+const SPOTIFY_PLAYLIST = "https://open.spotify.com/playlist/...";
 ```
 
-Drop real audio files into `assets/music/` (mp3, ogg or wav all work) and update `file`/`title`. The placeholders there now are silent files, just so the page never shows a broken-file error before you've added real tracks — replace them whenever you like. The chosen track loops quietly (15% volume) across every later screen; she can mute it with the button next to the theme toggle.
+In Spotify: playlist → **⋯ → Share → Copy link to playlist**. A bare id works too, and the `?si=...` tracking tail is stripped automatically. Leave it blank and the button and panel simply don't appear.
+
+**Know what this is and isn't.** It's a player she presses herself, not a soundtrack. An embed is an iframe, so it stops dead on every page change, and Spotify won't let it play hidden or start on its own. It also serves **30-second previews** unless she happens to be signed into Spotify in that browser (full tracks generally want Premium). There is deliberately no background music any more — the local audio files, the sign-up "choose your music" step and the mute button were all removed when the playlist became the music. If you ever want continuous audio back, it's in the git history (`feat(music): a song picker in the corner`).
 
 **The "No" button:** dodges the pointer, touch and keyboard focus on purpose (it's part of the "Will you be my baby forever?" bit) — there's nothing to configure here, just know it's intentional if you see it move while testing. It sits still until she actually goes near it. If you want to tune how it feels, the values are at the top of `js/config.js` (`NO_RADIUS`, `NO_FLEE_ACCEL`, `NO_CURVE`, `NO_DAMPING` and friends, each with a sensible range in a comment).
 
@@ -241,7 +240,7 @@ The `noindex` tag and `robots.txt` keep search engines away, and unlisted videos
 
 - [ ] The real letter is in `CONFIG.letter`, and the placeholders `(your name)` and `XXXXXXXXXXX` are gone
 - [ ] Real icons are in `assets/icons/` and the `ICONS` array points at them
-- [ ] Real music is in `assets/music/` and the `MUSIC` array points at it (or you're fine with the placeholder silence)
+- [ ] `SPOTIFY_PLAYLIST` points at your playlist, and the ♫ button opens it
 - [ ] If you set up the Google Sheet: `APPS_SCRIPT_URL` is filled in in `js/config.js`, a test sign-up lands a row in the `Account` tab, and `resetAccount` has been run afterwards so hers is the first
 - [ ] You know her secret word too, since there is no "forgot it" — only `resetAccount`
 - [ ] Every clip plays in the deployed site, not just locally

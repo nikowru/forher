@@ -97,9 +97,6 @@ const CONFIG = {
   labels: { theme: "Minimal theme", seal: "Open the envelope", collections: "Collections", letter: "Letter" },
   // music controls (js/common.js); placeholder wording, edit freely
   music: {
-    resume: "Tap to resume music",
-    mute: "Mute music",
-    unmute: "Unmute music",
     // the song picker in the top-right corner (js/common.js)
     pick: "Music",                       // the button's screen-reader name
     panelTitle: "What should we listen to?",
@@ -140,7 +137,6 @@ const CONFIG = {
     usernamePlaceholder: "baby/aki/therru/xarom/Somebody Else/Osmanthus",
     moodLabel: "Are u okie babyy, masaya ka phue ba?",
     iconLabel: "Pili ka pfp bwhehe",
-    musicLabel: "MUSIC TASTEEE",
     // the secret word (js/signup.js): she types it here and again on the login page; trimmed + lowercased when compared
     secretLabel: "Secret word na tau lang makakaalam (password phue baby/aki)",
     secretHint: "I love youuuuuu",
@@ -158,8 +154,7 @@ const CONFIG = {
       username: "Tell me what to call you first, please?",
       mood: "Pick how you're feeling first, please?",
       icon: "Choose an icon you like first, please?",
-      secret: "Whisper me our secret word first, please?",
-      music: "Pick a song for us first, please?"
+      secret: "Whisper me our secret word first, please?"
     },
     // shown in #su-msg when the account could not be created
     errors: {
@@ -257,15 +252,6 @@ const AVATAR_PX = 256;        // [128-384] stored size of an uploaded photo
 const AVATAR_QUALITY = 0.82;  // [0.6-0.9] JPEG quality for an uploaded photo
 const AVATAR_MAX_CHARS = 40000; // a Sheet cell holds 50k; above this the photo stays on her device only
 
-// Placeholder tracks for "choose your music". SWAP REAL FILES IN HERE: drop your own
-// audio files under /assets/music/ (mp3, ogg or wav all work) and update `file` below -
-// the placeholders here are real (silent) files so a normal run never 404s; any missing/
-// broken file is still handled gracefully regardless, see startMusic() below.
-const MUSIC = [
-  { id: "track-1", title: "Track 1 (placeholder)", file: "assets/music/track-1.wav" },
-  { id: "track-2", title: "Track 2 (placeholder)", file: "assets/music/track-2.wav" },
-  { id: "track-3", title: "Track 3 (placeholder)", file: "assets/music/track-3.wav" }
-];
 
 // ---- Spotify playlist (optional) ----------------------------------------------------------
 // Paste your playlist's share link here and it appears inside the music panel, top right.
@@ -275,7 +261,7 @@ const MUSIC = [
 // cannot be the site's background music - an embed is an iframe, so it stops dead on every page
 // change, and Spotify will not let it play hidden or start on its own. It also plays 30-second
 // previews unless she happens to be signed into Spotify in that browser (full tracks generally
-// want Premium). The continuous soundtrack is the MUSIC files above; this is the real records.
+// want Premium). There is no background soundtrack; this player is the music.
 const SPOTIFY_PLAYLIST = "https://open.spotify.com/playlist/1erLS2omxRNJRgrtTY1HR2?si=BHK7yJGzQcWH_7V7itrzQQ";
 
 // Top-level const above is already global to other classic scripts; hang them on Surprise too, for explicitness.
@@ -286,7 +272,6 @@ Surprise.ICONS = ICONS;
 Surprise.AVATAR_PX = AVATAR_PX;
 Surprise.AVATAR_QUALITY = AVATAR_QUALITY;
 Surprise.AVATAR_MAX_CHARS = AVATAR_MAX_CHARS;
-Surprise.MUSIC = MUSIC;
 Surprise.SPOTIFY_PLAYLIST = SPOTIFY_PLAYLIST;
 Surprise.PR_NO = {
   RADIUS: PR_NO_RADIUS, RADIUS_SPEED: PR_NO_RADIUS_SPEED, RADIUS_BONUS_MAX: PR_NO_RADIUS_BONUS_MAX, GLIDE_MS: PR_NO_GLIDE_MS,
