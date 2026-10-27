@@ -334,7 +334,13 @@ function forgotSecret_() {
  * any. Worth doing once before the reveal, so there is no doubt about whose inbox it reaches.
  */
 function whoGetsTheEmail() {
-  return "Recovery mail would go to: " + ownerEmail_();
+  var who = ownerEmail_();
+  var how = PropertiesService.getScriptProperties().getProperty("OWNER_EMAIL")
+    ? "set by the OWNER_EMAIL script property"
+    : "the account that owns this script";
+  // Logger.log, not a bare return: the editor only shows what is logged, never a returned value.
+  Logger.log("Recovery mail would go to: " + who + "  (" + how + ")");
+  return who;
 }
 
 /** Whoever owns this script. Deliberately not written down anywhere in the repo. */
