@@ -54,6 +54,8 @@ Then open the address it prints (usually http://localhost:3000).
 
 To try the other theme, use the sun/moon button in the top right. To reset to "follow my system setting", run `localStorage.clear()` in the browser console.
 
+Signing in leaves this browser signed in, but the gate is still shown every time the site is opened - she is always the one who goes through it. **Remember me on this laptop** fills her username and secret word in so that is one click. It is off unless she ticks it, and unticking it (or "Not me / start fresh") wipes it. To do the filling-in, the secret word is kept in that browser, so only tick it on a device that is hers.
+
 To start the whole thing over while testing, add `?reset=1` to the address, e.g. `http://localhost:3000/?reset=1`. That clears her answers, her reply and which pages she's unlocked, and puts her back on a fresh sign-up — but it deliberately keeps your light/dark choice.
 
 Because the pages unlock in order, opening `memories.html` or `inbox.html` directly before she's got there will just send you back to the right page. That's the guard working, not a bug.

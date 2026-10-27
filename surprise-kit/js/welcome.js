@@ -7,17 +7,40 @@
 (function () {
   const S = window.Surprise;
   if (!S || !S.Store || !S.Chrome || !S.Api) return;
-  const { Api, Session, Progress, Guard, CONFIG } = S;
+  const { Api, Progress, Guard, CONFIG, Store, KEYS } = S;
   const L = CONFIG.login, W = CONFIG.welcome;
   const $ = id => document.getElementById(id);
   const gate = $("gate");
   if (!gate || !$("lg-form") || !$("lg-username") || !$("lg-secret") || !$("lg-msg") || !$("lg-continue")) return;
 
-  // Already signed in on this device and part-way through -> straight on, no flash of the gate.
+  // The gate is the front door and she always sees it. It used to jump an already-signed-in visitor
+  // straight to her furthest page, which meant that once this browser had a session the sign-in was
+  // never shown again. "Remember me" is the opt-in version of that: it fills the fields in rather than
+  // skipping past them, so she is always the one who decides to go through.
   gate.hidden = true;
-  if (Session.isActive() && Progress.furthest()) { location.replace(Guard.onward()); return; }
+
+  // ---- what this laptop remembers ----
+  // Only ever written when she ticks the box, and wiped the moment she unticks it or starts fresh.
+  // HONEST NOTE: to type the secret word back in for her it has to be kept as she typed it, in this
+  // browser's localStorage. Anyone who can open her unlocked laptop could read it there. That was
+  // already true of being silently signed in - they could simply walk into the site - so this does not
+  // widen anything, but it is a real trade and it is why the box is off unless she asks for it.
+  const remembered = () => { const r = Store.getJSON(KEYS.remember, null); return r && typeof r === "object" ? r : null; };
+  function rememberNow(on, who, word) {
+    if (!on) return Store.remove(KEYS.remember);
+    return Store.setJSON(KEYS.remember, { v: 1, username: String(who || ""), secret: String(word || "") });
+  }
 
   fillWording();
+  // if this laptop remembers her, the fields are already filled and Continue is one click away
+  (function prefill() {
+    const r = remembered(); if (!r) return;
+    const u = $("lg-username"), s = $("lg-secret"), box = $("lg-remember");
+    if (u) u.value = r.username || "";
+    if (s) s.value = r.secret || "";
+    if (box) box.checked = true;
+  })();
+
   // The form is useful either way, so show the card immediately and let the panel settle once the
   // server answers. A slow backend then costs her nothing: she can already start typing.
   gate.hidden = false;
@@ -29,6 +52,7 @@
 
   function fillWording() {
     document.title = W.title;
+    const rem = $("lg-remember-label"); if (rem) rem.textContent = L.remember;
     const themeBtn = $("theme"); if (themeBtn) themeBtn.setAttribute("aria-label", CONFIG.labels.theme);
     setText("wl-title", W.title);
     const lab = (id, t) => { const el = document.querySelector('label[for="' + id + '"]'); if (el) el.textContent = t; };
@@ -97,6 +121,9 @@
           } else showMsg(L.network);
           return;
         }
+        // only now, with the word proven right, is it worth keeping
+        const box = $("lg-remember");
+        rememberNow(!!(box && box.checked), username.value.trim(), secret.value);
         const prof = r.profile || {};
         S.Chrome.go(Guard.onward());
       });
@@ -135,6 +162,7 @@
       const who = username.value.trim();
       erasing = true;
       dYes.disabled = true; dYes.setAttribute("aria-busy", "true"); dYes.textContent = C.working;
+      Store.remove(KEYS.remember); // whatever happens next, this laptop should not hold her word any more
       Api.deleteAccount(who || (S.Store.getJSON(S.KEYS.signup, {}) || {}).username || "", word).then(r => {
         if (r.ok) { location.replace("index.html"); return; } // gone: straight back to a first-time gate
         erasing = false;

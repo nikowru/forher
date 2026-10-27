@@ -170,6 +170,7 @@ const CONFIG = {
     continue: "Continue",
     loading: "One moment...", // Continue's label while the login request is in flight (it is disabled meanwhile)
     reset: "Not me / start fresh",
+    remember: "Remember me on this laptop",
     // gentle prompts when Continue is pressed with a field empty (first empty one wins)
     missing: {
       username: "Tell me who you are first, please?",
