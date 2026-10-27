@@ -53,6 +53,11 @@ body::after{content:"";position:fixed;inset:0;z-index:29;pointer-events:none;bac
    position:fixed, so it covers the gallery, header and footer exactly as it covered the old page.
    z-index 30 sits under that dim (31) and under the lifted foreground (32) - the same stack as before. */
 .letter-over{position:fixed;inset:0;z-index:30;display:grid;place-items:center;overflow-y:auto}
+/* This `display` is an author rule, so on its own it beats the browser's [hidden]{display:none} and the
+   overlay stays laid out even when js/letter.js never shows it - a full-viewport fixed layer swallowing
+   every click on the gallery. The guard below is what makes `hidden` mean hidden. Any element whose
+   visibility is driven by the hidden attribute needs this as soon as it is given a display rule. */
+.letter-over[hidden]{display:none}
 .letter-over .stage{width:100%;min-height:100%;box-sizing:border-box}
 /* handing the page back: the whole layer fades as the gallery lights up underneath */
 .letter-over.leaving{opacity:0;transition:opacity .7s ease;pointer-events:none}
