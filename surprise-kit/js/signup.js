@@ -37,18 +37,28 @@
     setText("su-secret-hint", CONFIG.signup.secretHint);
     setText("su-mood-label", CONFIG.signup.moodLabel);
     setText("su-icon-label", CONFIG.signup.iconLabel);
-    setText("su-music-label", CONFIG.signup.musicLabel);
     setText("su-continue", CONFIG.signup.continue);
 
     let selectedMood = null, selectedIconId = null;
 
     function renderMoods() {
       const box = $("su-moods");
-      box.replaceChildren(...MOODS.map(m => {
+      box.replaceChildren(...MOODS.map((m, i) => {
         const b = document.createElement("button");
         b.type = "button"; b.className = "su-mood"; b.dataset.id = m.id;
         b.setAttribute("aria-pressed", "false"); b.setAttribute("aria-label", m.label);
-        b.textContent = m.emoji;
+        b.style.setProperty("--i", i); // staggers the entrance, like the avatars
+        if (m.file) {
+          const img = document.createElement("img");
+          img.src = m.file; img.alt = ""; img.decoding = "async";
+          img.width = 96; img.height = 96;
+          b.append(img);
+        } else if (m.emoji) {
+          b.textContent = m.emoji; // still works if a mood has no gif
+        }
+        const cap = document.createElement("span");
+        cap.className = "su-mood-cap"; cap.textContent = m.label;
+        b.append(cap);
         return b;
       }));
       // single-select, radio-like: plain buttons, so Tab/Enter/Space already work with no extra keyboard code

@@ -259,16 +259,15 @@ html:has(.player[open]){overflow:hidden}
    wrapping down to a lonely last word. */
 .su-title{margin:0 auto;max-width:22ch;text-align:center;text-wrap:balance;
  font:600 clamp(2.1rem,4.4vw,3.2rem)/1.2 'Dancing Script',cursive;color:var(--btn);text-shadow:0 2px 10px rgba(var(--sh),.22)}
-.su-form{display:grid;grid-template-columns:1fr;grid-template-areas:"username" "secret" "mood" "icon" "music" "final";gap:1.1rem;min-width:0}
+.su-form{display:grid;grid-template-columns:1fr;grid-template-areas:"username" "secret" "mood" "icon" "final";gap:1.1rem;min-width:0}
 @media (min-width:800px){
-  .su-form{grid-template-columns:1fr 1fr;column-gap:2.2rem;grid-template-areas:"username icon" "secret icon" "mood music" "final final"}
+  .su-form{grid-template-columns:1fr 1fr;column-gap:2.2rem;grid-template-areas:"username icon" "secret icon" "mood mood" "final final"}
 }
 .su-step{display:flex;flex-direction:column;gap:.6rem;padding-bottom:1rem;border-bottom:1px solid var(--rule);min-width:0}
 .su-step[data-step="username"]{grid-area:username}
 .su-step[data-step="secret"]{grid-area:secret}
 .su-step[data-step="mood"]{grid-area:mood}
 .su-step[data-step="icon"]{grid-area:icon}
-.su-step[data-step="music"]{grid-area:music}
 /* final step: spans the full width below the 2-column grid, centered; no border/padding
    carried over from .su-step, and a small negative margin trims the leftover row-gap above
    it so nothing reads as dead space between the grid and the question. */
@@ -302,21 +301,38 @@ html:has(.player[open]){overflow:hidden}
    node exists yet, so the ::after below reads that same aria-label via attr() to show it
    underneath each circle without any script.js change). [aria-pressed="true"] gets a ring +
    scale bump so the selected mood is unambiguous at a glance. */
-.su-moods{display:flex;flex-wrap:wrap;gap:.8rem;justify-content:center;min-height:56px;padding-bottom:1.3rem}
-.su-mood{flex:0 0 auto;position:relative;width:clamp(44px,10vw,52px);height:clamp(44px,10vw,52px);padding:0;
- display:flex;align-items:center;justify-content:center;overflow:visible;
- font-size:clamp(1.6rem,4.5vw,2.1rem);line-height:1;color:var(--tab-ink);background:var(--tab);border:1.5px solid var(--slot-edge);border-radius:50%;cursor:pointer;
- transition:transform .15s ease,box-shadow .15s ease}
-.su-mood:hover{border-color:var(--accent)}
-.su-mood:focus-visible{outline-offset:2px}
-/* selected states ring in --btn, not --tab-on: in the dark theme --tab-on is the same #f3f4f6
-   as the card's --paper, so a fill alone is invisible against the card (QA S5). --btn is the
-   primary button colour in both themes, so it reads as a defined edge on cream and on white. */
-.su-mood[aria-pressed="true"]{color:var(--tab-on-ink);background:var(--tab-on);border-color:var(--btn);
- transform:scale(1.1);box-shadow:0 0 0 3px color-mix(in srgb,var(--btn) 45%,transparent),0 4px 10px rgba(var(--sh),.35)}
-.su-mood::after{content:attr(aria-label);position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:.35rem;width:6em;
- font:600 .62rem/1.15 'Quicksand',sans-serif;color:var(--ink);text-align:center;white-space:normal;pointer-events:none}
-@media (prefers-reduced-motion:reduce){.su-mood{transition:none}}
+/* Mood picker: round animated tiles with a caption under each, the same family as the avatar
+   grid. The row spans the full card now that nothing sits beside it. */
+.su-step[data-step="mood"]{align-items:center;text-align:center}
+.su-moods{display:flex;flex-wrap:wrap;gap:clamp(1rem,3.2vw,2.6rem);justify-content:center;
+ padding:.3rem 0 .4rem;width:100%}
+.su-mood{flex:0 0 auto;position:relative;width:clamp(72px,9vw,92px);padding:0;background:none;border:0;cursor:pointer;
+ display:flex;flex-direction:column;align-items:center;gap:.45rem;color:var(--ink);
+ transition:transform .2s cubic-bezier(.2,.8,.3,1);
+ animation:av-in .45s cubic-bezier(.2,.8,.3,1) both;animation-delay:calc(min(var(--i,0),8) * 60ms)}
+/* the gif itself is the round tile; the button stays a plain column so the caption sits outside it */
+.su-mood img{width:clamp(64px,8vw,80px);height:clamp(64px,8vw,80px);object-fit:cover;border-radius:50%;display:block;
+ border:2px solid var(--slot-edge);box-shadow:0 3px 8px -3px rgba(var(--sh),.45);
+ transition:border-color .2s ease,box-shadow .2s ease}
+.su-mood-cap{font:600 .72rem/1.2 'Quicksand',sans-serif;color:var(--ink);text-align:center;max-width:9em}
+/* narrow screens: five across in one row rather than 4 + a lonely 5th, tiles shrinking to fit */
+@media (max-width:600px){
+  .su-moods{display:grid;grid-template-columns:repeat(5,1fr);gap:.5rem;align-items:start}
+  .su-mood{width:auto}
+  .su-mood img{width:100%;height:auto;aspect-ratio:1}
+  .su-mood-cap{font-size:.6rem;max-width:none;overflow-wrap:anywhere}}
+.su-mood:hover{transform:translateY(-3px)}
+.su-mood:hover img{border-color:var(--accent);box-shadow:0 10px 20px -6px rgba(var(--sh),.55)}
+.su-mood:focus-visible{outline-offset:4px;border-radius:12px}
+/* chosen: ring in --btn, never --tab-on, which is the card's own colour in the dark theme */
+.su-mood[aria-pressed="true"]{transform:translateY(-3px)}
+.su-mood[aria-pressed="true"] img{border-color:var(--btn);
+ box-shadow:0 0 0 4px color-mix(in srgb,var(--btn) 50%,transparent),0 10px 20px -6px rgba(var(--sh),.5)}
+.su-mood[aria-pressed="true"] .su-mood-cap{color:var(--btn);font-weight:700}
+@media (prefers-reduced-motion:reduce){
+  .su-mood{animation:none;transition:none}
+  .su-mood img{transition:none}
+  .su-mood:hover,.su-mood[aria-pressed="true"]{transform:none}}
 /* icon picker: one horizontal row (not a wrapping grid), each icon with a visible label
    underneath (same attr(aria-label) technique as the moods above, reading ICONS' label
    field - "One".."Five" today, the real icon names once D-assets' placeholders are swapped).

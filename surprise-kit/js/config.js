@@ -211,12 +211,15 @@ const CONFIG = {
   }
 };
 
+// The five moods. `file` is the animated gif shown on the button; `label` is the caption under it
+// and what a screen reader reads. `id` is what gets saved, so leave ids alone once she has picked.
+// To swap a gif: drop a square-ish one in /assets/moods/ and point `file` at it.
 const MOODS = [
-  { id: "masak8 :<, pero it'll come to pass(no baby tell me)", emoji: "\u{1F622}", label: "i'm not okay" },
-  { id: "i'm not fine", emoji: "\u{1F641}", label: "A little down" },
-  { id: "k lang.", emoji: "\u{1F610}", label: "sakto lang.." },
-  { id: "okay lang", emoji: "\u{1F642}", label: "Happy" },
-  { id: "I'M VERY HAPPY BABY", emoji: "\u{1F604}", label: "SOAPER HAPPY BABYYY" }
+  { id: "masak8 :<, pero it'll come to pass(no baby tell me)", file: "assets/moods/mood-1.gif", label: "i'm not okay" },
+  { id: "i'm not fine", file: "assets/moods/mood-2.gif", label: "A little down" },
+  { id: "k lang.", file: "assets/moods/mood-3.gif", label: "sakto lang.." },
+  { id: "okay lang", file: "assets/moods/mood-4.gif", label: "Happy" },
+  { id: "I'M VERY HAPPY BABY", file: "assets/moods/mood-5.gif", label: "SOAPER HAPPY BABYYY" }
 ];
 
 // Placeholder icons for "choose an icon". SWAP REAL FILES IN HERE: replace the files
