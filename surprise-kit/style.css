@@ -791,3 +791,44 @@ body.proposal{--pr-glow:20%}
    bury #air (z-index 10). <body> already carries the identical gradient, so on these pages the
    container goes transparent and the drifting hearts show through around the card. */
 .hearts .signup,.hearts .gate{background:transparent}
+
+/* ---- music panel (top right, every page) ------------------------------------------------------
+   The list switches the background track - real audio files, which survive a page change. The
+   Spotify embed under it is a visible player she presses herself; an iframe cannot be the
+   background music, so the two are deliberately separate things in one place. */
+.tunes-float{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:116px;z-index:55;
+ width:42px;height:42px;display:grid;place-items:center;padding:0;border-radius:50%;cursor:pointer;
+ font-size:1.15rem;line-height:1;color:var(--head);border:1px solid var(--glass-edge);
+ background:radial-gradient(120% 90% at 28% 12%,var(--glass-sheen),transparent 62%),var(--glass);
+ -webkit-backdrop-filter:blur(12px) saturate(1.4);backdrop-filter:blur(12px) saturate(1.4);
+ box-shadow:inset 0 1px 0 var(--glass-hi),inset 0 -6px 12px -8px rgba(var(--sh),.5),0 6px 16px -6px rgba(var(--sh),.45);
+ transition:transform .18s ease,background .18s ease}
+.tunes-float:hover{background:radial-gradient(120% 90% at 28% 12%,var(--glass-sheen),transparent 62%),var(--glass-hi);transform:translateY(-1px)}
+.tunes[aria-expanded="true"]{border-color:var(--btn)}
+
+.tunes-panel{position:fixed;top:calc(env(safe-area-inset-top,0px) + 66px);right:16px;z-index:56;
+ width:min(320px,92vw);max-height:min(70vh,34rem);overflow-y:auto;box-sizing:border-box;
+ padding:.9rem 1rem 1rem;border-radius:16px;background:var(--paper);color:var(--ink);
+ border:1px solid color-mix(in srgb,var(--btn) 16%,transparent);
+ box-shadow:0 24px 48px -16px rgba(var(--sh),.6);
+ animation:tunes-in .22s cubic-bezier(.2,.8,.3,1) both}
+@keyframes tunes-in{from{opacity:0;transform:translateY(-8px) scale(.98)}}
+.tunes-panel :focus-visible{--ring:var(--ring-paper)}
+.tunes-title{margin:0 0 .7rem;font:700 1.15rem/1.25 'Dancing Script',cursive;color:var(--btn)}
+.tunes-sub{margin:1rem 0 .5rem;font:600 .8rem/1.3 'Quicksand',sans-serif;
+ color:color-mix(in srgb,var(--ink) 70%,transparent);text-transform:uppercase;letter-spacing:.04em}
+.tunes-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.4rem}
+.tunes-track{width:100%;text-align:left;padding:.55rem .8rem;border-radius:10px;cursor:pointer;
+ font:600 .92rem/1.3 'Quicksand',sans-serif;color:var(--ink);
+ background:color-mix(in srgb,var(--btn) 6%,transparent);
+ border:1.5px solid color-mix(in srgb,var(--btn) 18%,transparent);
+ transition:background .18s ease,border-color .18s ease,transform .18s ease}
+.tunes-track:hover{border-color:var(--btn);transform:translateX(2px)}
+/* the one the site is humming: filled, with a small note in front */
+.tunes-track[aria-pressed="true"]{color:var(--btn-text);background:var(--btn);border-color:var(--btn)}
+.tunes-track[aria-pressed="true"]::before{content:"\266A  "}
+.tunes-spotify iframe{display:block;border:0;border-radius:12px}
+@media (prefers-reduced-motion:reduce){
+  .tunes-panel{animation:none}
+  .tunes-float,.tunes-track{transition:none}
+  .tunes-float:hover,.tunes-track:hover{transform:none}}

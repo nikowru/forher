@@ -99,7 +99,12 @@ const CONFIG = {
   music: {
     resume: "Tap to resume music",
     mute: "Mute music",
-    unmute: "Unmute music"
+    unmute: "Unmute music",
+    // the song picker in the top-right corner (js/common.js)
+    pick: "Music",                       // the button's screen-reader name
+    panelTitle: "What should we listen to?",
+    nowPlaying: "Playing",               // marks the track the site is humming
+    playlistTitle: "The playlist I made you"  // heading over the Spotify embed, when one is set
   },
   // shared header / footer / page titles (js/common.js); placeholder wording, edit freely
   site: {
@@ -262,6 +267,17 @@ const MUSIC = [
   { id: "track-3", title: "Track 3 (placeholder)", file: "assets/music/track-3.wav" }
 ];
 
+// ---- Spotify playlist (optional) ----------------------------------------------------------
+// Paste your playlist's share link here and it appears inside the music panel, top right.
+// Spotify > playlist > ... > Share > Copy link to playlist. A bare id works too. Blank = no embed.
+//
+// Worth knowing, so it does not surprise you: this is a VISIBLE player she presses herself. It
+// cannot be the site's background music - an embed is an iframe, so it stops dead on every page
+// change, and Spotify will not let it play hidden or start on its own. It also plays 30-second
+// previews unless she happens to be signed into Spotify in that browser (full tracks generally
+// want Premium). The continuous soundtrack is the MUSIC files above; this is the real records.
+const SPOTIFY_PLAYLIST = "";
+
 // Top-level const above is already global to other classic scripts; hang them on Surprise too, for explicitness.
 Surprise.APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzMOcR-BNlTO8dC6Z7XhjNM_CAPMU-AN3QZkIffp0dWPK07Sx3lpIbyRPBvn6IlYXS88w/exec";
 Surprise.CONFIG = CONFIG;
@@ -271,6 +287,7 @@ Surprise.AVATAR_PX = AVATAR_PX;
 Surprise.AVATAR_QUALITY = AVATAR_QUALITY;
 Surprise.AVATAR_MAX_CHARS = AVATAR_MAX_CHARS;
 Surprise.MUSIC = MUSIC;
+Surprise.SPOTIFY_PLAYLIST = SPOTIFY_PLAYLIST;
 Surprise.PR_NO = {
   RADIUS: PR_NO_RADIUS, RADIUS_SPEED: PR_NO_RADIUS_SPEED, RADIUS_BONUS_MAX: PR_NO_RADIUS_BONUS_MAX, GLIDE_MS: PR_NO_GLIDE_MS,
   DASH_MS: PR_NO_DASH_MS, STEP_MIN: PR_NO_STEP_MIN, STEP_MAX: PR_NO_STEP_MAX, CORNER_TRIGGER: PR_NO_CORNER_TRIGGER,

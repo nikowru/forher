@@ -440,10 +440,106 @@
   };
 
   // resume after a navigation: a saved record means a track was playing on the previous page
+  // ---- the music panel: switch the background track, and the Spotify playlist if one is set -----
+  // Sits with the other controls top right, so it is reachable from every page. The list changes
+  // what the site hums (real audio files, which survive a page change); the embed below it is a
+  // visible player she presses herself, because a Spotify iframe cannot be the background music.
+  const Tunes = {
+    build() {
+      const cfg = (S.CONFIG && S.CONFIG.music) || {};
+      const list = Array.isArray(S.MUSIC) ? S.MUSIC : [];
+      if (!list.length) return;
+
+      const btn = document.createElement("button");
+      btn.type = "button"; btn.id = "tunes"; btn.className = "tunes";
+      btn.setAttribute("aria-label", cfg.pick || "Music");
+      btn.setAttribute("aria-expanded", "false");
+      btn.textContent = "♫";
+
+      const actions = document.getElementById("hdr-actions") || document.querySelector(".hdr-actions");
+      if (actions) { btn.classList.add("hdr-btn"); actions.insertBefore(btn, actions.firstChild); }
+      else { btn.classList.add("tunes-float"); document.body.appendChild(btn); }
+
+      const panel = document.createElement("div");
+      panel.className = "tunes-panel"; panel.id = "tunes-panel"; panel.hidden = true;
+      panel.setAttribute("role", "dialog"); panel.setAttribute("aria-label", cfg.panelTitle || "Music");
+
+      const h = document.createElement("p");
+      h.className = "tunes-title"; h.textContent = cfg.panelTitle || "";
+      panel.appendChild(h);
+
+      const ul = document.createElement("ul");
+      ul.className = "tunes-list";
+      list.forEach(tr => {
+        const li = document.createElement("li");
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "tunes-track"; b.dataset.id = tr.id;
+        b.setAttribute("aria-pressed", "false");
+        b.textContent = tr.title || tr.id;
+        b.addEventListener("click", () => { Music.start(tr.id); Tunes.paint(); });
+        li.appendChild(b); ul.appendChild(li);
+      });
+      panel.appendChild(ul);
+
+      const embed = Tunes.spotify(cfg);
+      if (embed) panel.appendChild(embed);
+      document.body.appendChild(panel);
+
+      const close = () => { panel.hidden = true; btn.setAttribute("aria-expanded", "false"); };
+      btn.addEventListener("click", e => {
+        e.stopPropagation();
+        const open = panel.hidden;
+        panel.hidden = !open;
+        btn.setAttribute("aria-expanded", String(open));
+        if (open) { Tunes.paint(); const f = panel.querySelector(".tunes-track"); if (f) f.focus(); }
+      });
+      document.addEventListener("click", e => {
+        if (panel.hidden) return;
+        if (!panel.contains(e.target) && e.target !== btn) close();
+      });
+      document.addEventListener("keydown", e => { if (e.key === "Escape" && !panel.hidden) { close(); btn.focus(); } });
+      Tunes.paint();
+    },
+
+    // Accepts a share link or a bare id. Returns null when nothing is configured.
+    spotify(cfg) {
+      const raw = String(S.SPOTIFY_PLAYLIST || "").trim();
+      if (!raw) return null;
+      const m = raw.match(/playlist[/:]([A-Za-z0-9]+)/) || raw.match(/^([A-Za-z0-9]{16,})$/);
+      if (!m) return null;
+      const wrap = document.createElement("div");
+      wrap.className = "tunes-spotify";
+      if (cfg.playlistTitle) {
+        const t = document.createElement("p");
+        t.className = "tunes-sub"; t.textContent = cfg.playlistTitle;
+        wrap.appendChild(t);
+      }
+      const f = document.createElement("iframe");
+      f.src = "https://open.spotify.com/embed/playlist/" + m[1] + "?utm_source=generator";
+      f.width = "100%"; f.height = "232"; f.loading = "lazy"; f.frameBorder = "0";
+      f.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
+      f.setAttribute("title", cfg.playlistTitle || "Spotify");
+      wrap.appendChild(f);
+      return wrap;
+    },
+
+    paint() {
+      const now = Music.currentTrack();
+      const cfg = (S.CONFIG && S.CONFIG.music) || {};
+      document.querySelectorAll(".tunes-track").forEach(b => {
+        const on = b.dataset.id === now;
+        b.setAttribute("aria-pressed", String(on));
+        b.title = on ? (cfg.nowPlaying || "") : "";
+      });
+    }
+  };
+  S.Tunes = Tunes;
+
   function init() {
     initChrome();
     S.Air.init();
     Music.ensureMuteButton();
+    Tunes.build();
     const rec = Store.getJSON(KEYS.music, null);
     if (rec && typeof rec === "object" && typeof rec.id === "string") Music.start(rec.id); // unknown id falls back to the first track
   }
