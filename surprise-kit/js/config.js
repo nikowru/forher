@@ -244,9 +244,7 @@ const ICONS = [
   { id: "a13", label: "Mirror", file: "assets/icons/avatar-13.jpg" },
   { id: "a14", label: "Neon", file: "assets/icons/avatar-14.jpg" },
   { id: "a15", label: "Pen", file: "assets/icons/avatar-15.jpg" },
-  { id: "a16", label: "Suit", file: "assets/icons/avatar-16.jpg" },
-  { id: "a17", label: "Setup", file: "assets/icons/avatar-17.jpg" },
-  { id: "a18", label: "Morning", file: "assets/icons/avatar-18.jpg" }
+  { id: "a16", label: "Suit", file: "assets/icons/avatar-16.jpg" }
 ];
 // Her own photo: the upload tile is added after the list above. The picked file never leaves the
 // browser - it is cropped to a square and shrunk to AVATAR_PX before being stored, so it stays
@@ -265,7 +263,7 @@ const AVATAR_MAX_CHARS = 40000; // a Sheet cell holds 50k; above this the photo 
 // change, and Spotify will not let it play hidden or start on its own. It also plays 30-second
 // previews unless she happens to be signed into Spotify in that browser (full tracks generally
 // want Premium). There is no background soundtrack; this player is the music.
-const SPOTIFY_PLAYLIST = "https://open.spotify.com/playlist/1erLS2omxRNJRgrtTY1HR2?si=BHK7yJGzQcWH_7V7itrzQQ";
+const SPOTIFY_PLAYLIST = "https://open.spotify.com/playlist/1erLS2omxRNJRgrtTY1HR2?si=9uBDEjk8QVOy94iSAvqKjQ";
 
 // Top-level const above is already global to other classic scripts; hang them on Surprise too, for explicitness.
 Surprise.APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzMOcR-BNlTO8dC6Z7XhjNM_CAPMU-AN3QZkIffp0dWPK07Sx3lpIbyRPBvn6IlYXS88w/exec";
