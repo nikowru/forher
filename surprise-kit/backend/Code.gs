@@ -329,6 +329,14 @@ function forgotSecret_() {
   return { ok: true, mailed: true };
 }
 
+/**
+ * Run this from the editor to SEE where "I forgot our secret word" would send mail, without sending
+ * any. Worth doing once before the reveal, so there is no doubt about whose inbox it reaches.
+ */
+function whoGetsTheEmail() {
+  return "Recovery mail would go to: " + ownerEmail_();
+}
+
 /** Whoever owns this script. Deliberately not written down anywhere in the repo. */
 function ownerEmail_() {
   var set = PropertiesService.getScriptProperties().getProperty('OWNER_EMAIL');

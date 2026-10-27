@@ -127,7 +127,10 @@ She taps **"I forgot our secret word"** — it appears under the fields once a w
 You get an email with a temporary word like `k3mq-7bda-xp2w`. Tell it to her; it signs her in and then
 expires an hour later. Her real word keeps working the whole time and is never touched.
 
-The email goes to whoever owns the script. To send it somewhere else, add a Script Property called
+The email goes to whoever owns the script - the Google account you were signed into when you created
+the Sheet and pasted the code in. To check which address that is without sending anything, pick
+**`whoGetsTheEmail`** from the editor dropdown and **Run**; it prints the address in the log. Worth
+doing once before the reveal. To send it somewhere else instead, add a Script Property called
 `OWNER_EMAIL`. Apps Script allows roughly 100 emails a day on a personal account, and the button is
 limited to one email per ten minutes, so it cannot be used to flood your inbox.
 
