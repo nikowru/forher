@@ -126,6 +126,7 @@ function route_(action, body) {
     case 'getProfile':   return getProfile_(body);
     case 'deleteAccount': return deleteAccount_(body);
     case 'forgotSecret':  return forgotSecret_();
+    case 'changeSecret':  return changeSecret_(body);
     default:             return { ok: false, error: 'invalid' }; // unknown actions are ignored
   }
 }
@@ -207,7 +208,7 @@ function profileOf_(a) {
   return {
     username: a.username, mood: a.mood, iconId: a.icon, musicId: a.music,
     accepted: a.progress.accepted === true, progress: cleanProgress_(a.progress),
-    reply: a.reply || null
+    reply: a.reply || null, created: a.created || 0
   };
 }
 
@@ -341,6 +342,34 @@ function whoGetsTheEmail() {
   // Logger.log, not a bare return: the editor only shows what is logged, never a returned value.
   Logger.log("Recovery mail would go to: " + who + "  (" + how + ")");
   return who;
+}
+
+/**
+ * She changes the word herself, from inside the site. This is what makes "I forgot it" actually end:
+ * the emailed word gets her in, and then she sets one she will remember, instead of being locked out
+ * again an hour later.
+ *
+ * A valid session is the authorisation - she is already signed in, having proved either her own word
+ * or the emailed one - so it does NOT ask for the old word. Someone who has forgotten it could not
+ * supply it, which would defeat the whole point.
+ */
+function changeSecret_(body) {
+  if (!validToken_(body.token)) return { ok: false, error: 'auth' };
+  var word = str_(body.secret, MAX_SECRET);
+  if (!norm_(word)) return { ok: false, error: 'invalid' };
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (err) { return { ok: false, error: 'server' }; }
+  try {
+    var acct = readAccount_();
+    if (!acct) return { ok: false, error: 'auth' };
+    acct.secretHash = hashSecret_(word);
+    writeAccount_(acct);
+    clearTemp_();    // the emailed word has served its purpose and must not outlive this
+    clearFails_();
+    return { ok: true };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 /** Whoever owns this script. Deliberately not written down anywhere in the repo. */

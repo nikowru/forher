@@ -61,7 +61,7 @@
       return t;
     }
     const authed = (acct, token) => !!(acct && token && Array.isArray(acct.tokens) && acct.tokens.indexOf(token) >= 0);
-    const profileOf = a => ({ username: a.username, mood: a.mood, iconId: a.iconId, musicId: a.musicId, accepted: a.progress.accepted === true, progress: cleanProgress(a.progress), reply: a.reply || null });
+    const profileOf = a => ({ username: a.username, mood: a.mood, iconId: a.iconId, musicId: a.musicId, accepted: a.progress.accepted === true, progress: cleanProgress(a.progress), reply: a.reply || null, created: a.created || 0 });
 
     return {
       status() { return ok({ exists: !!load() }); },
@@ -126,6 +126,20 @@
         const acct = load();
         if (!authed(acct, token)) return fail("auth");
         return ok({ profile: profileOf(acct) });
+      },
+
+      // She sets a new word from inside the site. The session is the authorisation: she is already in,
+      // so the old word is never asked for - someone who has forgotten it could not give it.
+      changeSecret(token, secret) {
+        const acct = load();
+        if (!authed(acct, token)) return fail("auth");
+        if (!norm(secret)) return fail("invalid");
+        return hashSecret(secret, rand()).then(h => {
+          acct.secret = h;
+          delete acct.temp;            // the stand-in word must not outlive the change
+          save(acct);
+          return { ok: true };
+        });
       },
 
       // Phase A has no mail. It mints the same kind of one-hour word and prints it to the console so the
@@ -213,6 +227,7 @@
       getProfile(token) { return call({ action: "getProfile", token }, true); },
       deleteAccount(username, secret) { return call({ action: "deleteAccount", username, secret }, true); },
       forgotSecret() { return call({ action: "forgotSecret" }, false); }, // never retried: one ask, one email
+      changeSecret(token, secret) { return call({ action: "changeSecret", token, secret }, true); },
       getMemories() { return call({ action: "getMemories" }, true); }
     };
   }
@@ -280,6 +295,18 @@
     getMemories() { return guard(() => driver.getMemories()); },
     // "Not me / start fresh": forget this device's login only (the account itself stays)
     logout() { Session.clear(); return ok({}); },
+    // She sets a new secret word. Only works while signed in, and on success this device remembers the
+    // NEW word if it was remembering the old one - otherwise the gate would helpfully fill in a word
+    // that no longer opens anything.
+    changeSecret(secret) {
+      return guard(() => driver.changeSecret(tokenNow(), secret)).then(authLost).then(r => {
+        if (r.ok) {
+          const cur = Store.getJSON(KEYS.remember, null);
+          if (cur && typeof cur === "object") Store.setJSON(KEYS.remember, { v: 1, username: cur.username, secret: String(secret) });
+        }
+        return r;
+      });
+    },
     // "I forgot our secret word": asks the server to mint a one-hour word and email it to him. Her own
     // word is untouched, and the answer is the same whether or not anything was sent, so the gate never
     // becomes a way of finding out whether an account exists.

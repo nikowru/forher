@@ -134,7 +134,12 @@ doing once before the reveal. To send it somewhere else instead, add a Script Pr
 `OWNER_EMAIL`. Apps Script allows roughly 100 emails a day on a personal account, and the button is
 limited to one email per ten minutes, so it cannot be used to flood your inbox.
 
-To give her a **new permanent word**, open the Apps Script editor, pick `setSecret` from the dropdown,
+Once she is in, **she can set a new word herself** - that is what makes the emailed one a bridge
+rather than a postponement. The site calls `changeSecret` with her session; it never asks for the old
+word, because someone who has forgotten it could not supply one. The emailed word stops working the
+moment she does this.
+
+To set a new word **for** her instead, open the Apps Script editor, pick `setSecret` from the dropdown,
 and run it with the new word:
 
 ~~~js

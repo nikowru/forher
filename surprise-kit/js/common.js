@@ -127,6 +127,57 @@
   };
   S.Inbox = Inbox;
 
+  // ---- profile: everything a profile view needs, gathered from the account and from this device ----
+  // The secret word is the interesting part, and the honest answer is that the server CANNOT supply it.
+  // It is kept there only as a salted one-way hash, so it cannot be read back by anyone, including us.
+  // What can be shown is what this laptop remembers - the copy "Remember me on this laptop" keeps - so
+  // the word appears on her own device and nowhere else. `remembered` says which case a view is in, so
+  // it never has to guess from an empty string, and the view can say something warm on a device that
+  // does not know rather than looking broken.
+  const Profile = {
+    // the word as this device remembers it, or null
+    secretHere() {
+      const r = Store.getJSON(KEYS.remember, null);
+      const w = r && typeof r === "object" ? String(r.secret || "") : "";
+      return w || null;
+    },
+    // the picture she chose: her own upload wins over a stock avatar
+    avatarOf(iconId) {
+      const own = Store.get(KEYS.avatar, "");
+      if (iconId === "custom") return own || null;
+      const hit = (S.ICONS || []).find(i => i.id === iconId);
+      return hit ? hit.file : (own || null);
+    },
+    moodOf(id) { return (S.MOODS || []).find(m => m.id === id) || null; },
+    // -> Promise<{ ok, remembered, secret, account }>; { ok:false, error } if the account cannot be read
+    read() {
+      const api = S.Api;
+      if (!api || !api.getProfile) return Promise.resolve({ ok: false, error: "unavailable" });
+      return api.getProfile().then(r => {
+        if (!r || !r.ok) return { ok: false, error: (r && r.error) || "network" };
+        const p = r.profile || {}, mood = Profile.moodOf(p.mood), secret = Profile.secretHere();
+        return {
+          ok: true,
+          remembered: !!secret, // false = this device cannot show the word, and neither can anything else
+          secret: secret,
+          account: {
+            username: p.username || "",
+            moodId: p.mood || null,
+            moodLabel: mood ? mood.label : null,
+            moodFile: mood ? (mood.file || null) : null,
+            iconId: p.iconId || null,
+            avatar: Profile.avatarOf(p.iconId),
+            accepted: p.accepted === true,
+            progress: p.progress || {},
+            reply: p.reply || null,
+            created: Number(p.created) || 0 // 0 when unknown; an older account row may not carry it
+          }
+        };
+      });
+    }
+  };
+  S.Profile = Profile;
+
   // ---- page guards: a page file calls Surprise.Guard.require("memories") on load ----
   // Rules (flag-based; the "accepted" flag is never inferred from old data):
   //   proposal  needs a finished sign-up or login (its unlock flag)  -> else index.html (which shows sign-up or login)
