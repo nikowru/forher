@@ -61,7 +61,7 @@
       return t;
     }
     const authed = (acct, token) => !!(acct && token && Array.isArray(acct.tokens) && acct.tokens.indexOf(token) >= 0);
-    const profileOf = a => ({ username: a.username, mood: a.mood, iconId: a.iconId, musicId: a.musicId, accepted: a.progress.accepted === true, progress: cleanProgress(a.progress), reply: a.reply || null, created: a.created || 0 });
+    const profileOf = a => ({ username: a.username, mood: a.mood, iconId: a.iconId, musicId: a.musicId, accepted: a.progress.accepted === true, progress: cleanProgress(a.progress), reply: a.reply || null, created: a.created || 0, displayName: a.displayName || a.username });
 
     return {
       status() { return ok({ exists: !!load() }); },
@@ -125,6 +125,21 @@
       getProfile(token) {
         const acct = load();
         if (!authed(acct, token)) return fail("auth");
+        return ok({ profile: profileOf(acct) });
+      },
+
+      // The editable bits of her card. Never the sign-in name - see the server's note.
+      updateProfile(token, patch) {
+        const acct = load();
+        if (!authed(acct, token)) return fail("auth");
+        const p = patch || {};
+        if (p.displayName != null) {
+          const nm = String(p.displayName).trim();
+          if (!nm) return fail("invalid");
+          acct.displayName = nm.slice(0, 60);
+        }
+        if (p.mood != null) acct.mood = String(p.mood).slice(0, 60);
+        save(acct);
         return ok({ profile: profileOf(acct) });
       },
 
@@ -228,6 +243,7 @@
       deleteAccount(username, secret) { return call({ action: "deleteAccount", username, secret }, true); },
       forgotSecret() { return call({ action: "forgotSecret" }, false); }, // never retried: one ask, one email
       changeSecret(token, secret) { return call({ action: "changeSecret", token, secret }, true); },
+      updateProfile(token, patch) { return call({ action: "updateProfile", token, displayName: (patch || {}).displayName, mood: (patch || {}).mood }, true); },
       getMemories() { return call({ action: "getMemories" }, true); }
     };
   }
@@ -295,6 +311,17 @@
     getMemories() { return guard(() => driver.getMemories()); },
     // "Not me / start fresh": forget this device's login only (the account itself stays)
     logout() { Session.clear(); return ok({}); },
+    // Her card's name and mood. The local copy of her sign-up answers is kept in step, so the pages
+    // that still read it do not go on showing the old mood after she has changed it.
+    updateProfile(patch) {
+      return guard(() => driver.updateProfile(tokenNow(), patch)).then(authLost).then(r => {
+        if (r.ok && r.profile) {
+          const cur = Store.getJSON(KEYS.signup, {}) || {};
+          Store.setJSON(KEYS.signup, Object.assign(cur, { mood: r.profile.mood, displayName: r.profile.displayName }));
+        }
+        return r;
+      });
+    },
     // She sets a new secret word. Only works while signed in, and on success this device remembers the
     // NEW word if it was remembering the old one - otherwise the gate would helpfully fill in a word
     // that no longer opens anything.

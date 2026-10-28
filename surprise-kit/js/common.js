@@ -60,11 +60,13 @@
 
   // ---- progress: which pages are unlocked. proposal after a finished sign-up/login; letter after `accepted` (Yes);
   // memories + inbox after the reply.
-  const PAGES = ["memories", "inbox"];                                // the pages the header nav knows
+  const PAGES = ["memories", "inbox", "profile"];                     // the pages the header nav knows
   // "letter" has no page of its own any more - it is delivered as an overlay on memories.html - but it stays a
   // flag, because it is still the milestone between saying Yes and writing the reply, and accounts already
   // carry it. Saying Yes unlocks memories; the reply unlocks inbox.
-  const FLOW = ["proposal", "letter", "memories", "inbox"];           // everything with an unlock flag
+  // "profile" is in the flow so the nav and the guard know it, and it unlocks with the reply alongside
+  // inbox - her card is part of the arrived-at site, not something she meets before the letter.
+  const FLOW = ["proposal", "letter", "memories", "inbox", "profile"]; // everything with an unlock flag
   const LANDING = ["memories", "proposal"];                           // furthest first; inbox is a side page, never a landing target
   const Progress = {
     // { proposal, letter, memories, inbox, accepted } - always all five booleans
@@ -161,7 +163,8 @@
           remembered: !!secret, // false = this device cannot show the word, and neither can anything else
           secret: secret,
           account: {
-            username: p.username || "",
+            username: p.username || "",             // the name she signs in with; never changes here
+            displayName: p.displayName || p.username || "", // the name on her card, which she can change
             moodId: p.mood || null,
             moodLabel: mood ? mood.label : null,
             moodFile: mood ? (mood.file || null) : null,
@@ -206,9 +209,14 @@
         Progress.unlock("letter"); Progress.unlock("memories");
         return null;
       }
-      // inbox: still waits for the reply, and a saved reply heals a missing flag
+      // inbox + profile: both wait for the reply. Two things can prove it: this device holding a copy,
+      // or the inbox flag, which comes down with the profile after signing in somewhere new. Without
+      // that second test her own card would be locked on her phone even though she had written back.
       const rep = Store.getJSON(KEYS.reply, null);
-      if (rep && typeof rep === "object") { Progress.unlock("inbox"); return null; }
+      if ((rep && typeof rep === "object") || Progress.isUnlocked("inbox")) {
+        Progress.unlock("inbox"); Progress.unlock("profile");
+        return null;
+      }
       return Progress.isAccepted() ? "memories.html" : (Progress.isUnlocked("proposal") ? "proposal.html" : "index.html");
     },
     // true = stay; false = she is being redirected (location.replace, so the guarded URL isn't left in history)

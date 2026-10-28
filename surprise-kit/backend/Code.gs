@@ -43,7 +43,7 @@ var CACHE_FORGOT = 'forgot_sent';
 var FORGOT_QUIET_SECONDS = 600;     // at most one email every ten minutes, so the button cannot be used to spam
 
 var ACCOUNT_HEADERS = ['username', 'secretHash', 'mood', 'icon', 'music', 'accepted',
-                       'unlocked', 'reply', 'replyTime', 'created'];
+                       'unlocked', 'reply', 'replyTime', 'created', 'displayName'];
 var MEMORIES_HEADERS = ['title', 'note', 'date', 'youtubeId', 'collection', 'order'];
 var FLOW = ['proposal', 'letter', 'memories', 'inbox'];
 
@@ -79,7 +79,9 @@ function ensureSheet_(ss, name, headers) {
   var sh = ss.getSheetByName(name);
   if (!sh) sh = ss.insertSheet(name);
   var row = sh.getRange(1, 1, 1, headers.length);
-  if (String(sh.getRange(1, 1).getValue() || '') !== headers[0]) row.setValues([headers]).setFontWeight('bold');
+  var have = row.getValues()[0], same = true;
+  for (var i = 0; i < headers.length; i++) if (String(have[i] || '') !== headers[i]) { same = false; break; }
+  if (!same) row.setValues([headers]).setFontWeight('bold'); // row 1 only; her data in row 2 is never touched
   sh.setFrozenRows(1);
   return sh;
 }
@@ -127,6 +129,7 @@ function route_(action, body) {
     case 'deleteAccount': return deleteAccount_(body);
     case 'forgotSecret':  return forgotSecret_();
     case 'changeSecret':  return changeSecret_(body);
+    case 'updateProfile': return updateProfile_(body);
     default:             return { ok: false, error: 'invalid' }; // unknown actions are ignored
   }
 }
@@ -188,7 +191,7 @@ function readAccount_() {
     icon: v[3] === '' ? null : v[3], music: v[4] === '' ? null : v[4],
     progress: cleanProgress_(unlocked),
     reply: String(v[7] || '') ? { text: String(v[7]), timestamp: Number(v[8]) || 0 } : null,
-    created: Number(v[9]) || 0
+    created: Number(v[9]) || 0, displayName: String(v[10] || '')
   };
 }
 
@@ -199,7 +202,8 @@ function writeAccount_(a) {
     a.username, a.secretHash, a.mood == null ? '' : a.mood, a.icon == null ? '' : a.icon,
     a.music == null ? '' : a.music, a.progress.accepted === true,
     JSON.stringify(a.progress), a.reply ? a.reply.text : '',
-    a.reply ? a.reply.timestamp : '', a.created || Date.now()
+    a.reply ? a.reply.timestamp : '', a.created || Date.now(),
+    a.displayName == null ? '' : a.displayName
   ]]);
 }
 
@@ -208,7 +212,9 @@ function profileOf_(a) {
   return {
     username: a.username, mood: a.mood, iconId: a.icon, musicId: a.music,
     accepted: a.progress.accepted === true, progress: cleanProgress_(a.progress),
-    reply: a.reply || null, created: a.created || 0
+    reply: a.reply || null, created: a.created || 0,
+    // what the profile shows. Falls back to her sign-up name, so there is always something to print.
+    displayName: a.displayName || a.username
   };
 }
 
@@ -342,6 +348,33 @@ function whoGetsTheEmail() {
   // Logger.log, not a bare return: the editor only shows what is logged, never a returned value.
   Logger.log("Recovery mail would go to: " + who + "  (" + how + ")");
   return who;
+}
+
+/**
+ * The bits of her profile she can edit: the name shown on her card, and how she feels today.
+ *
+ * Deliberately NOT the sign-in name. She signs in with the username she chose at sign-up, and leaving
+ * that alone means renaming herself on a whim can never lock her out, and never has to drag the
+ * forgot-word and remember-me paths along with it.
+ */
+function updateProfile_(body) {
+  if (!validToken_(body.token)) return { ok: false, error: 'auth' };
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (err) { return { ok: false, error: 'server' }; }
+  try {
+    var acct = readAccount_();
+    if (!acct) return { ok: false, error: 'auth' };
+    if (body.displayName != null) {
+      var nm = str_(body.displayName, MAX_USERNAME).trim();
+      if (!nm) return { ok: false, error: 'invalid' };  // a blank card name helps nobody
+      acct.displayName = nm;
+    }
+    if (body.mood != null) acct.mood = str_(body.mood, MAX_FIELD);
+    writeAccount_(acct);
+    return { ok: true, profile: profileOf_(acct) };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 /**

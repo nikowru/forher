@@ -145,7 +145,7 @@
     Store.remove(KEYS.inboxSeen); // this reply is unread until she opens the inbox page
     // local copy first (guards, the unread badge and the returning-visitor view read it), then the api (the account's copy)
     Store.setJSON(KEYS.reply, { text: replyText, timestamp: Date.now() });
-    Progress.unlock("memories"); Progress.unlock("inbox");
+    Progress.unlock("memories"); Progress.unlock("inbox"); Progress.unlock("profile");
     if (S.Api && !website) { // honeypot filled = a bot: the page flow runs as normal but nothing is sent
       S.Api.saveReply(replyText).then(() => S.Api.saveProgress(Progress.read()));
     }

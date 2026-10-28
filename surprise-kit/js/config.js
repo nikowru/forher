@@ -107,12 +107,13 @@ const CONFIG = {
   site: {
     brand: "For you",
     footer: "Made with love, just for you",
-    titles: { memories: "Our memories", inbox: "What you wrote" },
-    nav: { memories: "Memories", inbox: "Inbox" },
+    titles: { memories: "Our memories", inbox: "What you wrote", profile: "You" },
+    nav: { memories: "Memories", inbox: "Inbox", profile: "Profile" },
     // shown (in the footer line) when she clicks a page that isn't open yet
     locked: {
       memories: "This one opens once you've said yes.",
-      inbox: "This one opens once you've written back."
+      inbox: "This one opens once you've written back.",
+      profile: "This one opens once you've written back."
     },
     labels: { pages: "Pages", inbox: "Inbox", inboxNew: "Inbox, 1 new", theme: "Switch theme" }
   },
@@ -199,6 +200,33 @@ const CONFIG = {
       network: "Something went wrong on my side. Try once more in a moment?",
       locked: "Too many tries for now. Give it a few minutes, sweetheart?"
     }
+  },
+  // Her profile card (profile.html). Wording only; the card's pictures live in /assets/profile.
+  profile: {
+    nameLabel: "name",
+    moodLabel: "feeling right now",
+    moodChange: "change it",
+    secretLabel: "our secret word",
+    secretShow: "tap to show",
+    secretHide: "hide",
+    // shown in place of the word on a device that was never told to remember her
+    secretUnknown: "only you know this one",
+    secretChange: "change our secret word",
+    secretNew: "the new word",
+    secretSave: "save it",
+    secretSaved: "done, that is our word now",
+    secretTooShort: "give it a word first?",
+    rankLabel: "valorant",
+    rank: "Gold 2",                        // edit freely; rankIcon may be left blank
+    rankIcon: "assets/profile/rank-gold.png",
+    playlistLabel: "on repeat",
+    usLabel: "us",
+    usCaption: "for you, always",
+    sinceLabel: "yours since",
+    saving: "saving...",
+    saveFailed: "that did not save. try once more?",
+    editName: "change your name",
+    nameTooShort: "a name, please?"
   },
   // phone-style notification on the letter page (js/letter.js), shown once during the first-time intro
   notify: {

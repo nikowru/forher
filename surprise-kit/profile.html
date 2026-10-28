@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en" data-theme>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>You</title>
+<meta name="description" content="A little card, just for her.">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@500;600;700&family=Pinyon+Script&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="site">
+<header class="site-header" id="site-header">
+  <p class="hdr-brand" id="brand"></p>
+  <nav class="hdr-nav" aria-label="Pages">
+    <a class="hdr-link" id="nav-memories" href="memories.html">Memories</a>
+    <a class="hdr-link" id="nav-inbox" href="inbox.html">Inbox</a>
+    <a class="hdr-link is-current" id="nav-profile" href="profile.html" aria-current="page">Profile</a>
+  </nav>
+  <div class="hdr-actions">
+    <a class="hdr-btn hdr-inbox" id="hdr-inbox" href="inbox.html" aria-label="Inbox"><span class="hdr-badge" id="hdr-inbox-badge" hidden></span></a>
+    <button class="hdr-btn" id="hdr-theme" type="button" aria-label="Switch theme">&#9790;</button>
+  </div>
+</header>
+
+<main class="site-main profile-main" id="main">
+  <!-- The whole card tilts toward the cursor; js/profile.js sets --mx/--my on it and the layers inside
+       sit at different depths via --depth. Everything still reads with no pointer and no JS motion. -->
+  <section class="pf" id="pf" aria-labelledby="pf-name">
+
+    <!-- top-left: the small avatar she chose at sign-up -->
+    <div class="pf-badge" style="--depth:34">
+      <img class="pf-badge-img" id="pf-avatar" alt="" width="56" height="56">
+    </div>
+
+    <!-- her photo, centre stage -->
+    <div class="pf-photo" style="--depth:46">
+      <div class="pf-photo-ring" aria-hidden="true"></div>
+      <img class="pf-photo-img" id="pf-photo" src="assets/profile/her-1.jpg" alt="" width="640" height="640">
+      <svg class="pf-hud" viewBox="0 0 200 200" aria-hidden="true">
+        <path d="M14 58V26a12 12 0 0 1 12-12h30"/>
+        <path d="M186 142v32a12 12 0 0 1-12 12h-30"/>
+        <circle cx="168" cy="40" r="5"/><circle cx="168" cy="58" r="3"/>
+        <circle cx="32" cy="160" r="5"/><circle cx="46" cy="160" r="3"/>
+        <path d="M150 170h34"/><path d="M16 30h34"/>
+      </svg>
+    </div>
+
+    <!-- name + mood, both hers to change -->
+    <div class="pf-id" style="--depth:28">
+      <p class="pf-field-label" id="pf-name-label"></p>
+      <h1 class="pf-name" id="pf-name"></h1>
+      <button class="pf-edit" type="button" id="pf-name-edit"></button>
+      <form class="pf-nameform" id="pf-nameform" hidden>
+        <label class="pf-sr" for="pf-name-input" id="pf-name-input-label"></label>
+        <input class="su-input pf-input" id="pf-name-input" type="text" maxlength="60" autocomplete="off">
+        <button class="pf-save" type="submit" id="pf-name-save"></button>
+      </form>
+    </div>
+
+    <div class="pf-mood" style="--depth:22">
+      <p class="pf-field-label" id="pf-mood-label"></p>
+      <div class="pf-mood-now">
+        <img class="pf-mood-img" id="pf-mood-img" alt="" width="64" height="64" hidden>
+        <span class="pf-mood-text" id="pf-mood-text"></span>
+      </div>
+      <button class="pf-edit" type="button" id="pf-mood-edit"></button>
+      <div class="pf-mood-pick" id="pf-mood-pick" hidden role="group"></div>
+    </div>
+
+    <!-- the secret word: only ever readable where this device remembers it -->
+    <div class="pf-secret" style="--depth:18">
+      <p class="pf-field-label" id="pf-secret-label"></p>
+      <p class="pf-secret-val" id="pf-secret-val"></p>
+      <button class="pf-edit" type="button" id="pf-secret-toggle" hidden></button>
+      <button class="pf-edit" type="button" id="pf-secret-change"></button>
+      <form class="pf-secretform" id="pf-secretform" hidden>
+        <label class="pf-sr" for="pf-secret-input" id="pf-secret-input-label"></label>
+        <input class="su-input pf-input" id="pf-secret-input" type="text" maxlength="100" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button class="pf-save" type="submit" id="pf-secret-save"></button>
+      </form>
+    </div>
+
+    <!-- rank: the icon is optional, the badge reads fine without it -->
+    <div class="pf-rank" style="--depth:16">
+      <p class="pf-field-label" id="pf-rank-label"></p>
+      <div class="pf-rank-row">
+        <img class="pf-rank-img" id="pf-rank-img" alt="" width="48" height="48" hidden>
+        <span class="pf-rank-text" id="pf-rank-text"></span>
+      </div>
+    </div>
+
+    <!-- the two of us, in pixels -->
+    <figure class="pf-us" style="--depth:12">
+      <p class="pf-field-label" id="pf-us-label"></p>
+      <img class="pf-us-img" id="pf-us-img" src="assets/profile/us-pixel.png" alt="" width="295" height="520">
+      <figcaption class="pf-us-cap" id="pf-us-cap"></figcaption>
+    </figure>
+
+    <!-- her playlist -->
+    <div class="pf-tunes" style="--depth:10">
+      <p class="pf-field-label" id="pf-tunes-label"></p>
+      <div class="pf-tunes-embed" id="pf-tunes-embed"></div>
+    </div>
+
+    <p class="pf-since" id="pf-since" style="--depth:8"></p>
+    <p class="su-msg pf-msg" id="pf-msg" role="status" aria-live="polite" hidden></p>
+  </section>
+</main>
+
+<footer class="site-footer" id="site-footer">
+  <p class="site-footer-text" id="site-footer-text"></p>
+</footer>
+<div id="air" aria-hidden="true"></div>
+
+<script src="js/config.js" defer></script>
+<script src="js/common.js" defer></script>
+<script src="js/api.js" defer></script>
+<script src="js/profile.js" defer></script>
+</body>
+</html>
