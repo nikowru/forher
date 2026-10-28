@@ -4,7 +4,7 @@ window.Surprise = window.Surprise || {};
 // ---- Google Apps Script backend (optional; see docs/backend-setup.md) ----
 // Paste your deployed web app URL (ends in /exec) here once you have followed docs/backend-setup.md.
 // BLANK = everything stays in this browser (local mode). Set = the Sheet is the only store (no silent local fallback).
-const APPS_SCRIPT_URL = "";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzMOcR-BNlTO8dC6Z7XhjNM_CAPMU-AN3QZkIffp0dWPK07Sx3lpIbyRPBvn6IlYXS88w/exec";
 
 // ---- "No" button feel (sign-up card, final step) - tweak these to change how it dodges ----
 // Units: px, seconds (per-second values are px/s or px/s^2), ms where named. Sensible range in [].
@@ -276,7 +276,7 @@ const AVATAR_MAX_CHARS = 40000; // a Sheet cell holds 50k; above this the photo 
 const SPOTIFY_PLAYLIST = "https://open.spotify.com/playlist/1erLS2omxRNJRgrtTY1HR2?si=9uBDEjk8QVOy94iSAvqKjQ";
 
 // Top-level const above is already global to other classic scripts; hang them on Surprise too, for explicitness.
-Surprise.APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzMOcR-BNlTO8dC6Z7XhjNM_CAPMU-AN3QZkIffp0dWPK07Sx3lpIbyRPBvn6IlYXS88w/exec";
+Surprise.APPS_SCRIPT_URL = APPS_SCRIPT_URL;
 Surprise.CONFIG = CONFIG;
 Surprise.MOODS = MOODS;
 Surprise.ICONS = ICONS;
