@@ -309,8 +309,11 @@ function forgotSecret_() {
     JSON.stringify({ h: hashSecret_(word), exp: Date.now() + TEMP_TTL_MS }));
   cache.put(CACHE_FORGOT, '1', FORGOT_QUIET_SECONDS);
   try {
+    var to = ownerEmail_();
+    // Executions in the editor will show this, so "it said it sent but nothing arrived" is answerable.
+    console.log('forgotSecret: sending to ' + to + ' (quota left ' + MailApp.getRemainingDailyQuota() + ')');
     MailApp.sendEmail({
-      to: ownerEmail_(),
+      to: to,
       subject: 'She forgot the secret word',
       body: [
         acct.username + ' asked for help getting in.',
@@ -331,9 +334,27 @@ function forgotSecret_() {
     });
   } catch (err) {
     // the word is already live, so she can still be let in by hand; never leak the reason to the page
+    console.log('forgotSecret: send FAILED - ' + err);
     return { ok: true, mailed: false };
   }
   return { ok: true, mailed: true };
+}
+
+/**
+ * Run this from the editor to actually send yourself one test email, and say where it went. Use it
+ * when a recovery email does not arrive: run here, the Execution log shows the address, the quota and
+ * any error in full, none of which the web app is willing to tell a caller.
+ */
+function sendTestEmail() {
+  var to;
+  try { to = ownerEmail_(); }
+  catch (err) { Logger.log('No address: ' + err + '\nSet an OWNER_EMAIL script property.'); return 'no address'; }
+  Logger.log('Sending to: ' + to);
+  Logger.log('Mail quota left today: ' + MailApp.getRemainingDailyQuota());
+  MailApp.sendEmail({ to: to, subject: 'Test from the surprise site',
+    body: 'If you are reading this, recovery email works and this is the inbox it reaches.' });
+  Logger.log('Sent. If nothing arrives, check All Mail and Sent - a message you send to yourself can skip the Inbox.');
+  return to;
 }
 
 /**
@@ -405,11 +426,21 @@ function changeSecret_(body) {
   }
 }
 
-/** Whoever owns this script. Deliberately not written down anywhere in the repo. */
+/**
+ * Where recovery mail goes. Deliberately not written down anywhere in the repo.
+ *
+ * OWNER_EMAIL is checked first and is the RELIABLE answer. Session.getEffectiveUser() is only a
+ * convenience: inside a web app answering an anonymous caller it can come back empty, and an empty
+ * "to" makes MailApp fail in ways that are easy to miss. So this throws rather than guessing, and
+ * forgotSecret_ reports that as mailed:false instead of pretending it sent.
+ */
 function ownerEmail_() {
-  var set = PropertiesService.getScriptProperties().getProperty('OWNER_EMAIL');
+  var set = String(PropertiesService.getScriptProperties().getProperty('OWNER_EMAIL') || '').trim();
   if (set) return set;
-  return Session.getEffectiveUser().getEmail();
+  var who = '';
+  try { who = String(Session.getEffectiveUser().getEmail() || '').trim(); } catch (err) { who = ''; }
+  if (!who) throw new Error('No recovery address. Set an OWNER_EMAIL script property.');
+  return who;
 }
 
 /**
