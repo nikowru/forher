@@ -870,10 +870,12 @@ body.proposal{--pr-glow:20%}
  background:color-mix(in srgb,var(--paper) 94%,transparent);
  border:1px solid color-mix(in srgb,var(--btn) 22%,transparent);
  box-shadow:0 26px 60px -28px rgba(var(--sh),.5);
- transform-style:preserve-3d}
-.pf.is-tilting{transform:rotateX(var(--rx)) rotateY(var(--ry));transition:transform .12s linear}
-/* each layer rides forward by its own depth, and drifts a little against the lean */
-.pf>*{transform:translate3d(calc(var(--mx) * var(--depth,0) * -.5px),calc(var(--my) * var(--depth,0) * -.5px),calc(var(--depth,0) * 1px))}
+ perspective:900px}
+/* Only her photo answers the cursor. Leaning the whole card took the text and the panels with it,
+   which read as the page being crooked rather than as depth - so the card is now a flat, steady
+   surface and the portrait is the one thing alive on it. */
+.pf.is-tilting .pf-photo{transform:rotateX(var(--rx)) rotateY(var(--ry))
+ translate3d(calc(var(--mx) * -7px),calc(var(--my) * -7px),0);transition:transform .12s linear}
 
 .pf-field-label{margin:0 0 .3rem;font:600 .72rem/1.2 'Quicksand',sans-serif;letter-spacing:.14em;
  text-transform:uppercase;color:color-mix(in srgb,var(--ink) 62%,transparent)}
@@ -961,8 +963,7 @@ body.proposal{--pr-glow:20%}
   .pf-rank-row{justify-content:center}
 }
 @media (prefers-reduced-motion:reduce){
-  .pf.is-tilting{transform:none;transition:none}
-  .pf>*{transform:none}
+  .pf.is-tilting .pf-photo{transform:none;transition:none}
   .pf-moodbtn{animation:none}
   .pf-moodbtn:hover img{transform:none}
 }
