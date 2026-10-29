@@ -218,7 +218,7 @@ const CONFIG = {
     secretTooShort: "give it a word first?",
     rankLabel: "valorant",
     rank: "Gold 2",                        // edit freely; rankIcon may be left blank
-    rankIcon: "assets/profile/rank-gold.png",
+    rankIcon: "assets/profile/rankgold2.png",
     playlistLabel: "on repeat",
     usLabel: "us",
     usCaption: "for you, always",
