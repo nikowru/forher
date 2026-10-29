@@ -81,7 +81,15 @@
       const p = Progress.read(); p[page] = true;
       return Store.setJSON(KEYS.progress, p);
     },
-    isUnlocked(page) { return FLOW.indexOf(page) >= 0 && Progress.read()[page] === true; },
+    isUnlocked(page) {
+      if (FLOW.indexOf(page) < 0) return false;
+      const p = Progress.read();
+      // Her card opens with the inbox: one reply earns both. Progress saved before the profile tab
+      // existed carries only `inbox`, and the server never learns "profile" at all, so deriving it
+      // here heals both cases everywhere at once - the nav lock, the guard, and the click blocker.
+      if (page === "profile") return p.profile === true || p.inbox === true;
+      return p[page] === true;
+    },
     // Yes was pressed: sets `accepted` and opens the letter AND memories, because the letter is now
     // delivered on the memories page. Without memories here, furthest() would send her back to the proposal.
     accept() { const p = Progress.read(); p.accepted = true; p.letter = true; p.memories = true; return Store.setJSON(KEYS.progress, p); },
