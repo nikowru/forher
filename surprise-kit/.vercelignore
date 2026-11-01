@@ -1,0 +1,7 @@
+# Kept in the repo, never published: notes, test tools and the Apps Script source describe the surprise,
+# and the site needs none of them. Everything else in this folder is the site.
+README.md
+docs/
+tools/
+backend/
+.gitignore
