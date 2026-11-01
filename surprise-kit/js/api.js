@@ -1,4 +1,4 @@
-// The one client every page calls for account / progress / reply / memories: Surprise.Api.
+// The one client every page calls for account / progress / reply / memories / mail: Surprise.Api.
 // Classic script; load after js/config.js and js/common.js. Every method returns a real Promise and resolves with
 //   { ok: true, ... }  or  { ok: false, error: "<code>" }
 // so pages never need try/catch. Error codes: "invalid" (missing/bad input), "exists" (sign-up refused: an account
@@ -28,6 +28,11 @@
   const FLOW = ["proposal", "letter", "memories", "inbox"];
   const cleanProgress = p => { const o = {}; FLOW.concat("accepted").forEach(k => { o[k] = !!(p && typeof p === "object" && p[k] === true); }); return o; };
   const REPLY_MAX = 2000;
+  const MESSAGE_MAX = 4000; // matches MAX_MESSAGE in backend/Code.gs
+  // The default admin password's unsalted SHA-256 - the same constant as DEFAULT_ADMIN_DIGEST in backend/Code.gs -
+  // so the word itself is not in the page source. Used by the local stand-in only, which cannot change it; the server
+  // keeps its own salted hash, replaced by setting an ADMIN_PASSWORD script property.
+  const LOCAL_ADMIN_DIGEST = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9";
 
   // ---- local driver: pretends to be the server. HONEST NOTE: in Phase A the secret word is a local stand-in only,
   // not security. Anyone with this browser's devtools can read or edit localStorage. The salted SHA-256 below only
@@ -61,6 +66,34 @@
       return t;
     }
     const authed = (acct, token) => !!(acct && token && Array.isArray(acct.tokens) && acct.tokens.indexOf(token) >= 0);
+
+    // The mailbox stand-in: the Messages tab plus his admin sessions, in a key of its own so his sessions are never
+    // in her account. Same rules as the server: the token decides the direction, she reads mail sent to her, he reads
+    // both, and her letter reply is shown to him from the account rather than copied.
+    const loadMail = () => {
+      const m = Store.getJSON(KEYS.mail, null) || {};
+      return { rows: Array.isArray(m.rows) ? m.rows : [], adminTokens: Array.isArray(m.adminTokens) ? m.adminTokens : [],
+        replyRead: m.replyRead && typeof m.replyRead === "object" ? m.replyRead : null };
+    };
+    const saveMail = m => Store.setJSON(KEYS.mail, { v: 1, rows: m.rows, adminTokens: m.adminTokens, replyRead: m.replyRead });
+    const roleOf = token => !token ? null : loadMail().adminTokens.indexOf(token) >= 0 ? "admin" : authed(load(), token) ? "her" : null;
+    const replyAsMail = (acct, box) => {
+      if (!acct || !acct.reply || !String(acct.reply.text || "").trim()) return null; // a blank one is not a mail, as on the server
+      const ts = Number(acct.reply.timestamp) || 0, seen = box.replyRead;
+      return { id: "reply", direction: "to-me", body: acct.reply.text, created: ts,
+        readAt: seen && Number(seen.ts) === ts ? (Number(seen.at) || null) : null, letterReply: true };
+    };
+    // unsalted SHA-256, for the admin password only. Without SubtleCrypto (plain http on a LAN address) the stand-in
+    // cannot check it, and refuses rather than letting anything through.
+    function digest(text) {
+      try {
+        if (window.crypto && crypto.subtle && window.TextEncoder) {
+          return crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)).then(buf =>
+            Array.prototype.map.call(new Uint8Array(buf), x => ("0" + x.toString(16)).slice(-2)).join(""));
+        }
+      } catch (e) { /* fall through */ }
+      return Promise.resolve(null);
+    }
     const profileOf = a => ({ username: a.username, mood: a.mood, iconId: a.iconId, musicId: a.musicId, accepted: a.progress.accepted === true, progress: cleanProgress(a.progress), reply: a.reply || null, created: a.created || 0, displayName: a.displayName || a.username });
 
     return {
@@ -180,8 +213,68 @@
         return matches(acct.secret, secret).then(good => {
           if (!good) return { ok: false, error: "wrong" }; // one answer for either part
           Store.remove(KEYS.account);
+          // her mail goes with her account; his stays, unread again - the server's rule (wipeAccount_)
+          const box = loadMail();
+          box.rows = box.rows.filter(m => m.direction === "to-her").map(m => Object.assign(m, { readAt: null }));
+          box.replyRead = null;
+          saveMail(box);
           return { ok: true, existed: true };
         });
+      },
+
+      // ---- the mailbox: the server's four actions with the server's rules (backend/Code.gs, "mailbox") ----
+      // Phase A has no lockout here, like login.
+      adminLogin(username, password) {
+        if (norm(username) !== "admin") return fail("wrong");
+        return digest(String(password == null ? "" : password).slice(0, 100)).then(h => {
+          if (!h || h !== LOCAL_ADMIN_DIGEST) return { ok: false, error: "wrong" };
+          const box = loadMail(), token = rand();
+          box.adminTokens = box.adminTokens.concat(token).slice(-5);
+          saveMail(box);
+          return { ok: true, token };
+        });
+      },
+
+      // the token decides the direction: his session writes to her, hers to him
+      sendMessage(token, body) {
+        const role = roleOf(token);
+        if (!role) return fail("auth");
+        if (typeof body !== "string") return fail("invalid");
+        const text = body.slice(0, MESSAGE_MAX);
+        if (!text.trim()) return fail("invalid");
+        const box = loadMail();
+        const mail = { id: rand(), direction: role === "admin" ? "to-her" : "to-me", body: text, created: Date.now(), readAt: null };
+        box.rows.push(mail);
+        saveMail(box);
+        return ok({ message: Object.assign({}, mail) });
+      },
+
+      // newest first; she sees mail sent to her, he sees both directions and her letter reply
+      getMessages(token) {
+        const role = roleOf(token);
+        if (!role) return fail("auth");
+        const box = loadMail();
+        const out = box.rows.filter(m => role === "admin" || m.direction === "to-her").map(m => Object.assign({}, m));
+        if (role === "admin") { const r = replyAsMail(load(), box); if (r) out.push(r); }
+        out.sort((a, b) => b.created - a.created);
+        return ok({ messages: out });
+      },
+
+      // only mail addressed to the caller; other ids are ignored, and a first readAt is never overwritten
+      markRead(token, ids) {
+        const role = roleOf(token);
+        if (!role) return fail("auth");
+        const want = Array.isArray(ids) ? ids.slice(0, 50).map(i => String(i == null ? "" : i).slice(0, 64)) : [];
+        if (!want.length) return ok({ marked: 0 });
+        const mine = role === "admin" ? "to-me" : "to-her", now = Date.now(), box = loadMail();
+        let marked = 0;
+        box.rows.forEach(m => { if (want.indexOf(m.id) >= 0 && m.direction === mine && !m.readAt) { m.readAt = now; marked++; } });
+        if (role === "admin" && want.indexOf("reply") >= 0) {
+          const r = replyAsMail(load(), box);
+          if (r && !r.readAt) { box.replyRead = { ts: r.created, at: now }; marked++; }
+        }
+        saveMail(box);
+        return ok({ marked });
       },
 
       // public, like the real getMemories: the Memories data. Phase A reads the repo's clips.json.
@@ -244,6 +337,11 @@
       forgotSecret() { return call({ action: "forgotSecret" }, false); }, // never retried: one ask, one email
       changeSecret(token, secret) { return call({ action: "changeSecret", token, secret }, true); },
       updateProfile(token, patch) { return call({ action: "updateProfile", token, displayName: (patch || {}).displayName, mood: (patch || {}).mood }, true); },
+      adminLogin(username, password) { return call({ action: "adminLogin", username, password }, true); },
+      // never retried, like signup: it appends, so a retry after a lost answer could deliver the same mail twice
+      sendMessage(token, body) { return call({ action: "sendMessage", token, body }, false); },
+      getMessages(token) { return call({ action: "getMessages", token }, true); },
+      markRead(token, ids) { return call({ action: "markRead", token, ids }, true); }, // a repeat changes nothing
       getMemories() { return call({ action: "getMemories" }, true); }
     };
   }
@@ -251,6 +349,10 @@
   const url = String(S.APPS_SCRIPT_URL || "").trim();
   const driver = url ? makeRemoteDriver(url) : makeLocalDriver(); // the ONLY place a driver is chosen
   const tokenNow = () => { const s = Session.get(); return s && s.token ? s.token : null; };
+  // His admin session: its own key, never hers. A dead one is just forgotten - no redirect, because the admin page
+  // answers by showing its sign-in again, and her pages must never learn it exists.
+  const adminToken = () => { const s = Store.getJSON(KEYS.adminSession, null); return s && s.token ? s.token : null; };
+  const adminLost = r => { if (r && r.ok === false && r.error === "auth") Store.remove(KEYS.adminSession); return r; };
   // keep this device's Progress in step with the account: flags only ever turn on, never off
   function mergeProgress(remote) {
     const local = Progress.read(), r = cleanProgress(remote), m = {};
@@ -287,9 +389,17 @@
     driver: url ? "remote" : "local", // for display / debugging only
     status() { return guard(() => driver.status()); },
     // data: { username, secret, mood, iconId, musicId }. On success the device is logged in and `proposal` is unlocked.
+    // A new account starts the story from the beginning on this device too. Anything an earlier account left here (one
+    // since reset on the server, on the same browser) belongs to that account: its flags would carry over through
+    // mergeProgress, which only ever turns them on; "the envelope was opened" would bring the letter back already open,
+    // with no envelope falling and no notification; its put-away letter would skip the letter altogether. Her picked
+    // photo, the theme and the music setting are hers, not the story's, and stay.
     signup(data) {
       return guard(() => driver.signup(data)).then(r => {
-        if (r.ok) { Session.start(r.token); mergeProgress(r.profile && r.profile.progress); Progress.unlock("proposal"); }
+        if (r.ok) {
+          [KEYS.progress, KEYS.reply, KEYS.letterSeen, KEYS.pending, KEYS.unread, KEYS.inboxSeen].forEach(k => Store.remove(k));
+          Session.start(r.token); mergeProgress(r.profile && r.profile.progress); Progress.unlock("proposal");
+        }
         return r;
       });
     },
@@ -338,6 +448,28 @@
     // word is untouched, and the answer is the same whether or not anything was sent, so the gate never
     // becomes a way of finding out whether an account exists.
     forgotSecret() { return guard(() => driver.forgotSecret()); },
+    // ---- the mailbox, her side: what he has sent her, and writing to him. Her session, like everything above;
+    // the server decides the direction from it, so these can only ever read to-her and write to-me.
+    getMessages() { return guard(() => driver.getMessages(tokenNow())).then(authLost); },
+    sendMessage(body) { return guard(() => driver.sendMessage(tokenNow(), body)).then(authLost); },
+    markRead(ids) { return guard(() => driver.markRead(tokenNow(), ids)).then(authLost); },
+    // ---- the mailbox, his side, for admin.html only. Every call here sends his admin token and nothing else, and
+    // every call above sends hers and nothing else, so neither page can act as the other even in one browser.
+    admin: {
+      signedIn() { return !!adminToken(); },
+      // the token is kept in storage, never handed back to the page
+      login(username, password) {
+        return guard(() => driver.adminLogin(username, password)).then(r => {
+          if (!r.ok) return r;
+          Store.setJSON(KEYS.adminSession, { v: 1, token: r.token, ts: Date.now() });
+          return { ok: true };
+        });
+      },
+      logout() { Store.remove(KEYS.adminSession); return ok({}); },
+      getMessages() { return guard(() => driver.getMessages(adminToken())).then(adminLost); },
+      sendMessage(body) { return guard(() => driver.sendMessage(adminToken(), body)).then(adminLost); },
+      markRead(ids) { return guard(() => driver.markRead(adminToken(), ids)).then(adminLost); }
+    },
     // Erase the account everywhere, so the whole thing can be lived again from the sign-up card.
     // The secret word has to be right, and only once the server confirms does this device drop its
     // own copies - a refused delete leaves her exactly where she was.

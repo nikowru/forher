@@ -8,7 +8,7 @@
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@500;600;700&family=Pinyon+Script&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Dancing+Script:wght@600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body class="site">
@@ -26,87 +26,123 @@
 </header>
 
 <main class="site-main profile-main" id="main">
-  <!-- The whole card tilts toward the cursor; js/profile.js sets --mx/--my on it and the layers inside
-       sit at different depths via --depth. Everything still reads with no pointer and no JS motion. -->
+  <!-- Her card is written as a letter about her, not printed as a form: every detail is set into a
+       sentence, and the words on either side of each value live in CONFIG.profile as .lead/.tail.
+       The field labels are still here and still carry the accessible name of each field - they are
+       just read, not shown, because the sentence already says what the value is.
+
+       Each changeable detail is one .pf-item: the sentence, then the button that changes it
+       underneath, then whatever that button opens. The buttons sit below their line rather than
+       inside it so they are easy to hit and do not interrupt the sentence as it is read.
+       Nothing on the sheet is underlined - the buttons carry the whole affordance, so an underline
+       can never be mistaken for something clickable.
+       The sheet never moves; only #pf-photo answers the cursor. -->
   <section class="pf" id="pf" aria-labelledby="pf-name">
 
-    <!-- top-left: the small avatar she chose at sign-up -->
-    <div class="pf-badge" style="--depth:34">
-      <img class="pf-badge-img" id="pf-avatar" alt="" width="56" height="56">
-    </div>
+    <!-- the letter's date -->
+    <p class="pf-date" id="pf-since"></p>
 
-    <!-- her photo, centre stage -->
-    <div class="pf-photo" style="--depth:46">
-      <div class="pf-photo-ring" aria-hidden="true"></div>
-      <img class="pf-photo-img" id="pf-photo" src="assets/profile/her-1.jpg" alt="" width="640" height="640">
-      <svg class="pf-hud" viewBox="0 0 200 200" aria-hidden="true">
-        <path d="M14 58V26a12 12 0 0 1 12-12h30"/>
-        <path d="M186 142v32a12 12 0 0 1-12 12h-30"/>
-        <circle cx="168" cy="40" r="5"/><circle cx="168" cy="58" r="3"/>
-        <circle cx="32" cy="160" r="5"/><circle cx="46" cy="160" r="3"/>
-        <path d="M150 170h34"/><path d="M16 30h34"/>
-      </svg>
-    </div>
+    <div class="pf-head">
+      <!-- the print that came with it, mounted in its own white border, with the icon she chose at
+           sign-up stamped on it. The mount stays put; the print inside it is the loose part. -->
+      <figure class="pf-photo">
+        <img class="pf-photo-img" id="pf-photo" src="assets/profile/her-1.jpg" alt="" width="640" height="640">
+        <span class="pf-badge"><img class="pf-badge-img" id="pf-avatar" alt="" width="56" height="56"></span>
+      </figure>
 
-    <!-- name + mood, both hers to change -->
-    <div class="pf-id" style="--depth:28">
-      <p class="pf-field-label" id="pf-name-label"></p>
-      <h1 class="pf-name" id="pf-name"></h1>
-      <button class="pf-edit" type="button" id="pf-name-edit"></button>
-      <form class="pf-nameform" id="pf-nameform" hidden>
-        <label class="pf-sr" for="pf-name-input" id="pf-name-input-label"></label>
-        <input class="su-input pf-input" id="pf-name-input" type="text" maxlength="60" autocomplete="off">
-        <button class="pf-save" type="submit" id="pf-name-save"></button>
-      </form>
-    </div>
-
-    <div class="pf-mood" style="--depth:22">
-      <p class="pf-field-label" id="pf-mood-label"></p>
-      <div class="pf-mood-now">
-        <img class="pf-mood-img" id="pf-mood-img" alt="" width="64" height="64" hidden>
-        <span class="pf-mood-text" id="pf-mood-text"></span>
-      </div>
-      <button class="pf-edit" type="button" id="pf-mood-edit"></button>
-      <div class="pf-mood-pick" id="pf-mood-pick" hidden role="group"></div>
-    </div>
-
-    <!-- the secret word: only ever readable where this device remembers it -->
-    <div class="pf-secret" style="--depth:18">
-      <p class="pf-field-label" id="pf-secret-label"></p>
-      <p class="pf-secret-val" id="pf-secret-val"></p>
-      <button class="pf-edit" type="button" id="pf-secret-toggle" hidden></button>
-      <button class="pf-edit" type="button" id="pf-secret-change"></button>
-      <form class="pf-secretform" id="pf-secretform" hidden>
-        <label class="pf-sr" for="pf-secret-input" id="pf-secret-input-label"></label>
-        <input class="su-input pf-input" id="pf-secret-input" type="text" maxlength="100" autocomplete="off" autocapitalize="off" spellcheck="false">
-        <button class="pf-save" type="submit" id="pf-secret-save"></button>
-      </form>
-    </div>
-
-    <!-- rank: the icon is optional, the badge reads fine without it -->
-    <div class="pf-rank" style="--depth:16">
-      <p class="pf-field-label" id="pf-rank-label"></p>
-      <div class="pf-rank-row">
-        <img class="pf-rank-img" id="pf-rank-img" alt="" width="48" height="48" hidden>
-        <span class="pf-rank-text" id="pf-rank-text"></span>
+      <!-- the salutation: her own name, in her own hand, carrying the top of the page -->
+      <div class="pf-salute">
+        <p class="pf-sr" id="pf-name-label"></p>
+        <h1 class="pf-name" id="pf-name"></h1>
+        <div class="pf-acts">
+          <button class="pf-act" type="button" id="pf-name-edit"></button>
+        </div>
+        <form class="pf-form" id="pf-nameform" hidden>
+          <label class="pf-sr" for="pf-name-input" id="pf-name-input-label"></label>
+          <input class="su-input pf-input" id="pf-name-input" type="text" maxlength="60" autocomplete="off">
+          <button class="pf-save" type="submit" id="pf-name-save"></button>
+        </form>
       </div>
     </div>
 
-    <!-- the two of us, in pixels -->
-    <figure class="pf-us" style="--depth:12">
-      <p class="pf-field-label" id="pf-us-label"></p>
-      <img class="pf-us-img" id="pf-us-img" src="assets/profile/us-pixel.png" alt="" width="295" height="520">
-      <figcaption class="pf-us-cap" id="pf-us-cap"></figcaption>
-    </figure>
+    <div class="pf-body">
+      <!-- how she feels, with the gif set in the line itself -->
+      <div class="pf-item">
+        <p class="pf-line">
+          <span class="pf-sr" id="pf-mood-label"></span>
+          <span id="pf-mood-lead"></span>
+          <img class="pf-mood-img" id="pf-mood-img" alt="" width="64" height="64" hidden>
+          <span class="pf-val pf-mood-val" id="pf-mood-text"></span><span id="pf-mood-tail"></span>
+        </p>
+        <div class="pf-acts">
+          <button class="pf-act" type="button" id="pf-mood-edit"></button>
+        </div>
+        <div class="pf-mood-pick" id="pf-mood-pick" hidden role="group"></div>
+      </div>
 
-    <!-- her playlist -->
-    <div class="pf-tunes" style="--depth:10">
-      <p class="pf-field-label" id="pf-tunes-label"></p>
-      <div class="pf-tunes-embed" id="pf-tunes-embed"></div>
+      <!-- the secret word. On a device that was never told to remember her, js/profile.js hides the
+           words on either side and the value carries the whole line instead. -->
+      <div class="pf-item">
+        <p class="pf-line">
+          <span class="pf-sr" id="pf-secret-label"></span>
+          <span id="pf-secret-lead"></span>
+          <span class="pf-val pf-secret-val" id="pf-secret-val"></span><span id="pf-secret-tail"></span>
+        </p>
+        <div class="pf-acts">
+          <button class="pf-act" type="button" id="pf-secret-toggle" hidden></button>
+          <button class="pf-act" type="button" id="pf-secret-change"></button>
+        </div>
+        <form class="pf-form" id="pf-secretform" hidden>
+          <label class="pf-sr" for="pf-secret-input" id="pf-secret-input-label"></label>
+          <input class="su-input pf-input" id="pf-secret-input" type="text" maxlength="100" autocomplete="off" autocapitalize="off" spellcheck="false">
+          <button class="pf-save" type="submit" id="pf-secret-save"></button>
+        </form>
+      </div>
+
+      <!-- her rank. The words name the game, so the line still reads if the icon file is gone. -->
+      <div class="pf-item">
+        <p class="pf-line">
+          <span class="pf-sr" id="pf-rank-label"></span>
+          <span id="pf-rank-lead"></span>
+          <img class="pf-rank-img" id="pf-rank-img" alt="" width="48" height="48" hidden>
+          <span class="pf-val" id="pf-rank-text"></span><span id="pf-rank-tail"></span>
+        </p>
+      </div>
     </div>
 
-    <p class="pf-since" id="pf-since" style="--depth:8"></p>
+    <!-- what was enclosed with the letter: the record, and the two of us in pixels -->
+    <div class="pf-enclosed">
+      <div class="pf-tunes">
+        <p class="pf-lead-in" id="pf-tunes-label"></p>
+        <div class="pf-tunes-embed" id="pf-tunes-embed"></div>
+      </div>
+      <figure class="pf-us">
+        <p class="pf-sr" id="pf-us-label"></p>
+        <img class="pf-us-img" id="pf-us-img" src="assets/profile/us-pixel.png" alt="" width="295" height="520">
+        <figcaption class="pf-us-cap" id="pf-us-cap"></figcaption>
+      </figure>
+    </div>
+
+    <p class="pf-sign" id="pf-sign"></p>
     <p class="su-msg pf-msg" id="pf-msg" role="status" aria-live="polite" hidden></p>
+
+  </section>
+
+  <!-- writing to me, straight from her card (S.Compose in js/common.js, .wr in style.css): me standing beside
+       it, glad once she has sent it. The only place she writes to me. -->
+  <section class="wr" id="pf-write" aria-labelledby="pf-write-label">
+    <img class="wr-me" id="pf-write-me" src="assets/me/me-proud.png" data-happy="assets/me/me-excited.png" alt="" width="174" height="412">
+    <form class="wr-form" id="pf-write-form" novalidate>
+      <label class="wr-label" for="pf-write-text" id="pf-write-label"></label>
+      <textarea class="su-input wr-text" id="pf-write-text" rows="5" maxlength="4000"></textarea>
+      <p class="wr-msg" id="pf-write-msg" role="status" aria-live="polite" hidden></p>
+      <button class="wr-send" type="submit" id="pf-write-send"></button>
+    </form>
+    <div class="wr-sent" id="pf-write-sent" role="status" hidden>
+      <p class="wr-sent-title" id="pf-write-sent-title"></p>
+      <p class="wr-sent-text" id="pf-write-sent-text"></p>
+      <button class="wr-again" type="button" id="pf-write-again"></button>
+    </div>
   </section>
 </main>
 

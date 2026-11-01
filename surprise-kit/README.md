@@ -231,7 +231,7 @@ A few things worth knowing:
 3. **Redeploys:** every push to the connected branch redeploys automatically.
 4. **Branch previews:** these hosts also make preview links for other branches. Don't share those either.
 
-**Before you deploy, know what gets published.** The host serves *everything* in `surprise-kit`. That includes `README.md`, `docs/` and `backend/` (the Apps Script source — harmless if seen, since it has no secrets in it, but still describes the surprise), none of which she needs. Nobody can find them without the link, but she could if she typed the address. To avoid that, move the site files that actually need to be public (the four `.html` pages, `style.css`, `js/`, `clips.json`, `robots.txt`, `assets/`) into their own folder, and point the host at that folder instead.
+**Before you deploy, know what gets published.** The host serves *everything* in `surprise-kit`. That includes `README.md`, `docs/`, `tools/` and `backend/` (the Apps Script source — harmless if seen, since it has no secrets in it, but still describes the surprise), none of which she needs. Nobody can find them without the link, but she could if she typed the address. To avoid that, move the site files that actually need to be public (the four `.html` pages, `style.css`, `js/`, `clips.json`, `robots.txt`, `assets/`) into their own folder, and point the host at that folder instead.
 
 ### Privacy, honestly
 

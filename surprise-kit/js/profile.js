@@ -1,5 +1,7 @@
-// Her profile card (profile.html): the details she can see and change about herself, on a card that
-// leans toward the cursor. Classic script; needs js/config.js, js/common.js and js/api.js first.
+// Her profile card (profile.html): the details she can see and change about herself, written as a
+// letter about her rather than printed as a form - every value is set into a sentence, and the words
+// on either side of it come from CONFIG.profile as moodLead/moodTail and the rest.
+// Classic script; needs js/config.js, js/common.js and js/api.js first.
 //
 // The secret word is the one thing the server cannot supply - it is kept there only as a salted
 // one-way hash - so the card shows the copy THIS device keeps when she ticked "Remember me on this
@@ -20,15 +22,26 @@
   const clearMsg = () => { const m = $("pf-msg"); m.textContent = ""; m.hidden = true; };
 
   // ---- wording ----
+  // The labels are all still set; they are just read rather than shown (.pf-sr in the markup),
+  // because each line is a sentence that already says what its value is. The lead/tail pairs are
+  // the words that sentence puts on either side of the value.
   setText("pf-name-label", P.nameLabel);
   setText("pf-mood-label", P.moodLabel);
+  setText("pf-mood-lead", P.moodLead);
+  setText("pf-mood-tail", P.moodTail);
   setText("pf-secret-label", P.secretLabel);
+  setText("pf-secret-lead", P.secretLead);
+  setText("pf-secret-tail", P.secretTail);
   setText("pf-rank-label", P.rankLabel);
+  setText("pf-rank-lead", P.rankLead);
   setText("pf-rank-text", P.rank);
+  setText("pf-rank-tail", P.rankTail);
   setText("pf-us-label", P.usLabel);
   setText("pf-us-cap", P.usCaption);
   setText("pf-tunes-label", P.playlistLabel);
-  setText("pf-name-edit", P.moodChange);
+  setText("pf-sign", P.sign);
+  if (S.Compose) S.Compose.bind($("pf-write"));   // writing to me, under her card
+  setText("pf-name-edit", P.nameChange);
   setText("pf-mood-edit", P.moodChange);
   setText("pf-name-save", P.secretSave);
   setText("pf-secret-save", P.secretSave);
@@ -53,9 +66,11 @@
     if (!m) { const w = box.closest(".pf-tunes"); if (w) w.hidden = true; return; }
     const f = document.createElement("iframe");
     f.src = "https://open.spotify.com/embed/playlist/" + m[1];
-    f.width = "100%"; f.height = "152"; f.frameBorder = "0"; f.loading = "lazy";
+    // 80 is the compact single-row player. The tall 152 variant lists the tracks, which made the
+    // embed the loudest thing on a letter it is only meant to be enclosed with.
+    f.width = "100%"; f.height = "80"; f.frameBorder = "0"; f.loading = "lazy";
     f.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
-    f.setAttribute("title", P.playlistLabel);
+    f.setAttribute("title", P.playlistTitle);
     box.append(f);
   })();
 
@@ -83,15 +98,23 @@
   }
 
   // The word, or an honest note that this device cannot know it. Hidden until she asks either way.
+  // Where it cannot be known, the value carries the whole sentence and the words on either side of
+  // it step out of the way - otherwise the line would read "our word is only you know this one".
   let secretShown = false;
   function paintSecret(r) {
     const val = $("pf-secret-val"), toggle = $("pf-secret-toggle");
+    const lead = $("pf-secret-lead"), tail = $("pf-secret-tail");
     if (!r.remembered) {
+      lead.hidden = true;
+      tail.hidden = true;
       val.textContent = P.secretUnknown;
       val.classList.add("is-unknown");
+      val.classList.remove("is-masked");
       toggle.hidden = true;
       return;
     }
+    lead.hidden = false;
+    tail.hidden = false;
     val.classList.remove("is-unknown");
     toggle.hidden = false;
     toggle.textContent = secretShown ? P.secretHide : P.secretShow;
@@ -107,9 +130,20 @@
     });
   }
 
+  // Revealing runs an animation on the value itself: the word is let out left to right rather than
+  // appearing all at once. The class comes off again at the end so the next reveal replays it, and
+  // the forced reflow restarts it if she toggles faster than the animation runs.
+  const letOut = el => { el.classList.remove("is-revealing"); void el.offsetWidth; el.classList.add("is-revealing"); };
+  $("pf-secret-val").addEventListener("animationend", e => {
+    if (e.animationName === "pf-letout") e.target.classList.remove("is-revealing");
+  });
   $("pf-secret-toggle").addEventListener("click", () => {
     secretShown = !secretShown;
-    Profile.read().then(r => { if (r.ok) paintSecret(r); });
+    Profile.read().then(r => {
+      if (!r.ok) return;
+      paintSecret(r);
+      if (secretShown) letOut($("pf-secret-val"));
+    });
   });
 
   // ---- editing: name ----
@@ -135,11 +169,10 @@
 
   // ---- editing: mood, from the same five she chose at sign-up ----
   const pick = $("pf-mood-pick");
-  pick.replaceChildren(...(S.MOODS || []).map((m, i) => {
+  pick.replaceChildren(...(S.MOODS || []).map(m => {
     const b = document.createElement("button");
     b.type = "button"; b.className = "pf-moodbtn"; b.dataset.id = m.id;
     b.setAttribute("aria-label", m.label); b.title = m.label;
-    b.style.setProperty("--i", i);
     if (m.file) {
       const img = document.createElement("img");
       img.src = m.file; img.alt = ""; img.width = 56; img.height = 56; img.decoding = "async";
@@ -192,9 +225,10 @@
   }
 
   // ---- the tilt ----
-  // The card leans toward the pointer and each layer moves by its own --depth, so the photo sits in
-  // front of the HUD and the chips sit behind it. Pointer only: this is a flourish, never a way in,
-  // and everything is readable and usable at rest.
+  // Only her photo answers the pointer: --rx/--ry/--mx/--my are set here and style.css applies them
+  // to #pf-photo alone, so the print shifts inside its mount while the mount, the stamp and every
+  // written word stay still. Leaning the whole card took the text with it and read as the page being
+  // crooked. Pointer only: this is a flourish, never a way in, and everything is readable at rest.
   (function tilt() {
     if (reduceMotion.matches) return;
     if (!matchMedia("(hover: hover) and (pointer: fine)").matches) return; // no hover on a phone

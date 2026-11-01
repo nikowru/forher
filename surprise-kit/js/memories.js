@@ -46,10 +46,30 @@
       return li;
     }
 
+    // ---- the tabs are months (CONFIG.gallery.months), July to December ----
+    // Whatever the Sheet's collection column says, a clip goes under a month: the one its collection names, if it
+    // names one ("July", "jul", "7"), otherwise the month of its date. So the tabs read as a calendar even while the
+    // collection cells still say "Collection A". A clip with neither shows under All only. With no months configured
+    // the tabs go back to being the collections, as they were.
+    const MONTHS = Array.isArray(CONFIG.gallery.months) ? CONFIG.gallery.months : [];
+    const tabOf = c => {
+      if (!MONTHS.length) return c.collection;
+      const named = String(c.collection || "").trim().toLowerCase();
+      const hit = named && MONTHS.find(m => {
+        const t = String(m.title).toLowerCase();
+        return named === t || named === t.slice(0, 3) || Number(named) === m.month;
+      });
+      if (hit) return "m" + hit.month;
+      const d = /^\d{4}-(\d{2})-\d{2}$/.exec(String(c.date || "").trim());
+      const month = d ? Number(d[1]) : 0;
+      return MONTHS.some(m => m.month === month) ? "m" + month : null;
+    };
+    const tabsFor = collections => MONTHS.length ? MONTHS.map(m => ({ id: "m" + m.month, title: m.title })) : collections;
+
     function showTab(id) {
       for (const t of tabs.children) { const on = t.dataset.id === id; t.setAttribute("aria-selected", on); t.tabIndex = on ? 0 : -1; }
       $("panel").setAttribute("aria-labelledby", "tab-" + id);
-      shown = id === "all" ? clips : clips.filter(c => c.collection === id);
+      shown = id === "all" ? clips : clips.filter(c => tabOf(c) === id);
       grid.replaceChildren(...shown.map((c, i) => { const li = slot(c, i); li.style.setProperty("--i", i); return li; }));
       msg.textContent = shown.length ? "" : CONFIG.gallery.empty;
     }
@@ -107,15 +127,23 @@
 
     function openClip(i) {
       if (!shown.length) return;
+      document.dispatchEvent(new CustomEvent("surprise:quiet"));   // a clip has its own sound: the letter's song steps aside
       current = (i + shown.length) % shown.length;
       const c = shown[current], id = ++openId, live = () => id === openId && player.open;
-      dropPlayer();
       $("p-title").textContent = c.title; $("p-caption").textContent = c.caption || "";
       $("p-count").textContent = (current + 1) + " / " + shown.length;
       $("p-nav").hidden = shown.length < 2;
-      const mount = document.createElement("div"); video.replaceChildren(mount);
       if (!player.open) { player.showModal(); $("p-close").focus(); }
       if (!/^[\w-]{11}$/.test(c.youtubeId || "")) return fallback(c, "youtubeId is not 11 characters: " + JSON.stringify(c.youtubeId));
+      // A player is already up and ready (she pressed next, or the last clip just ended): load this clip into it
+      // rather than building another. The same player keeps playing on its own; a brand-new one with no tap behind
+      // it can be refused autoplay, on phones especially, and the run of clips would stall on a paused frame.
+      if (yt && typeof yt.loadVideoById === "function") {
+        yt.loadVideoById({ videoId: c.youtubeId, startSeconds: c.startSeconds || 0 });
+        return;
+      }
+      dropPlayer();
+      const mount = document.createElement("div"); mount.id = "p-yt"; video.replaceChildren(mount);
       // YouTube blocked or very slow: don't leave her looking at a black box
       const timer = setTimeout(() => { if (live() && !yt) fallback(c, "timed out after 10s (typeof YT = " + typeof YT + ") - usually an ad/privacy blocker"); }, 10000);
       loadYouTubeApi().then(() => {
@@ -124,9 +152,21 @@
         yt = new YT.Player(mount, {
           host: "https://www.youtube-nocookie.com", videoId: c.youtubeId, width: "100%", height: "100%",
           playerVars: { autoplay: 1, start: c.startSeconds || 0, rel: 0, playsinline: 1 },
-          events: { onError: e => setTimeout(() => { if (id === openId) fallback(c, "YouTube onError code " + (e && e.data)); }) }
+          events: {
+            // the player now outlives a single clip, so an error always belongs to the clip on screen now
+            onError: e => setTimeout(() => { if (player.open && yt) fallback(shown[current], "YouTube onError code " + (e && e.data)); }),
+            onStateChange: e => { if (e.data === YT.PlayerState.ENDED) playNext(); }
+          }
         });
       }).catch(err => { clearTimeout(timer); if (live()) fallback(c, "the IFrame API script failed to load - " + (err && err.type || err)); });
+    }
+
+    // One clip ended: the next one in the tab she is on starts by itself (CONFIG.player.autoplayNext). After the last
+    // one it simply stops - it does not wrap round to the first. A clip that cannot play here stops the run on its
+    // "watch on YouTube" card, the same as if she had pressed next onto it.
+    function playNext() {
+      if (CONFIG.player.autoplayNext === false || !player.open || current >= shown.length - 1) return;
+      openClip(current + 1);
     }
 
     $("p-prev").addEventListener("click", () => openClip(current - 1));
@@ -180,7 +220,7 @@
         console.warn("surprise-kit: memories api unavailable, falling back to clips.json", err);
         return loadClipsJSON().then(data => { checkClips(data); return data; });
       })
-      .then(data => { clips = data.clips || []; buildTabs(data.collections || []); showTab("all"); })
+      .then(data => { clips = data.clips || []; buildTabs(tabsFor(data.collections || [])); showTab("all"); })
       .catch(err => {
         console.error("clips.json could not be loaded. Open the site through a local server (see README).", err);
         msg.textContent = CONFIG.gallery.error;

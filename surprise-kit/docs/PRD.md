@@ -187,7 +187,7 @@ The sheet never exposes these rows back to the site - they are read only by me, 
 | Thumbnails | img.youtube.com/vi/{id}/hqdefault.jpg | No images to make by hand |
 | Repo | GitHub, private | Nobody sees clips.json or the Apps Script URL early |
 | Hosting | Cloudflare Pages, Netlify or Vercel, auto-deploy from GitHub | Free and works with private repos. GitHub Pages needs a public repo on free accounts, so avoid it |
-| Tooling | VS Code | Repeatable workflow |
+| Tooling | VS Code, with the test scripts in tools/ (run through tools/localmode.js, so a test never reaches the live Sheet) | Repeatable workflow, safe testing |
 
 Why no database first (phase 1): a JSON file is faster, free and cannot go down. Phase 2 (Google Sheets + Apps Script, section 4.3) is now the settled choice for both the Memories data and the sign-up/reply data - clips.json stays only as the fallback if the published CSV can't be fetched.
 

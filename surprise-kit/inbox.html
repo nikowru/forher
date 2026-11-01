@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<title>What you wrote</title>
+<title>Your letters</title>
 <!-- Documented exception: assets/favicon.svg can't read CSS variables, so it uses approved palette hexes directly. -->
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=Cormorant+Garamond:ital,wght@1,500;1,600&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Quicksand:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body class="site">
@@ -27,13 +27,34 @@
     <button class="hdr-btn" id="hdr-theme" type="button" aria-label="Switch theme">&#9790;</button>
   </div>
 </header>
+<!-- Her letters, kept as a stack: the ones he sends, newest on top, and the love note at the bottom with
+     what she wrote back to it. One is open at a time on the sheet beside the stack. Writing to him happens on her card
+     (profile.html), not here. All wording comes from CONFIG.inbox / CONFIG.reply. -->
 <main class="site-main inbox-main" id="main">
-  <article class="inbox-card" aria-labelledby="inbox-heading">
-    <h2 id="inbox-heading" tabindex="-1"></h2>
-    <p id="inbox-reply"></p>
-    <p id="inbox-when"></p>
+  <div class="mb" id="mb">
+    <header class="mb-head">
+      <h2 id="inbox-heading" tabindex="-1"></h2>
+      <p class="mb-sub" id="mb-sub"></p>
+      <p class="mb-note" id="mb-note" role="status" aria-live="polite" hidden></p>
+    </header>
+
+    <ol class="mb-stack" id="mb-stack"></ol>
+
+    <div class="mb-reading">
+      <article class="mb-sheet" id="mb-sheet" aria-live="polite">
+        <p class="mb-date" id="mb-date"></p>
+        <div class="mb-body" id="mb-body"></div>
+        <!-- only under the love note: what she wrote back to it -->
+        <section class="mb-yours" id="mb-yours" hidden>
+          <h3 class="mb-yours-title" id="mb-yours-title"></h3>
+          <p id="inbox-reply"></p>
+          <p id="inbox-when"></p>
+        </section>
+      </article>
+    </div>
+
     <p id="inbox-empty" role="status" hidden></p>
-  </article>
+  </div>
 </main>
 <footer class="site-footer" id="site-footer">
   <p class="site-footer-text" id="site-footer-text"></p>

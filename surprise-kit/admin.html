@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<title></title>
+<!-- Documented exception: assets/favicon.svg can't read CSS variables, so it uses approved palette hexes directly. -->
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Dancing+Script:wght@700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<!-- His back office. Not in her flow and not in her nav: no header, no guard, and nothing here reads
+     her session. Signed out, the page is the one plain sign-in below and nothing else. All wording
+     comes from CONFIG.admin at runtime. -->
+<body class="site" data-backoffice>
+<main class="site-main ad-main" id="main">
+
+  <form class="ad-signin" id="ad-signin" novalidate hidden>
+    <div class="ad-field">
+      <label class="ad-label" for="ad-user" id="ad-user-label"></label>
+      <input class="su-input" type="text" id="ad-user" name="username" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="60">
+    </div>
+    <div class="ad-field">
+      <label class="ad-label" for="ad-pass" id="ad-pass-label"></label>
+      <input class="su-input" type="password" id="ad-pass" name="password" autocomplete="current-password" maxlength="100">
+    </div>
+    <p class="ad-msg" id="ad-signin-msg" role="status" aria-live="polite" hidden></p>
+    <button class="ad-send" type="submit" id="ad-signin-go"></button>
+  </form>
+
+  <div class="ad-desk" id="ad-desk" hidden>
+    <header class="ad-top">
+      <h1 class="ad-heading" id="ad-heading"></h1>
+      <button class="ad-quiet" type="button" id="ad-signout"></button>
+    </header>
+
+    <form class="ad-compose" id="ad-compose" novalidate>
+      <p class="ad-kicker" id="ad-kicker"></p>
+      <h2 class="ad-title" id="ad-compose-title"></h2>
+      <div class="ad-field">
+        <label class="ad-label" for="ad-body" id="ad-body-label"></label>
+        <textarea class="su-input ad-body" id="ad-body" name="body" rows="9" maxlength="4000"></textarea>
+        <p class="ad-count" id="ad-count" aria-live="off"></p>
+      </div>
+      <p class="ad-msg" id="ad-send-msg" role="status" aria-live="polite" hidden></p>
+      <button class="ad-send" type="submit" id="ad-send"></button>
+    </form>
+
+    <section class="ad-list" aria-labelledby="ad-list-title">
+      <div class="ad-list-head">
+        <h2 class="ad-title" id="ad-list-title"></h2>
+        <button class="ad-quiet" type="button" id="ad-refresh"></button>
+      </div>
+      <p class="ad-msg" id="ad-list-msg" role="status" aria-live="polite" hidden></p>
+      <p class="ad-none" id="ad-none" hidden></p>
+      <ol class="ad-mail" id="ad-mail"></ol>
+    </section>
+  </div>
+
+</main>
+<script src="js/config.js" defer></script>
+<script src="js/common.js" defer></script>
+<script src="js/api.js" defer></script>
+<script src="js/admin.js" defer></script>
+</body>
+</html>

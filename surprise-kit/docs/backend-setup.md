@@ -31,8 +31,8 @@ That's all. The script builds its own tabs in step 3.
    - You'll see **"Google hasn't verified this app"** — that's expected, because *you* just wrote it
      and never submitted it for review. Click **Advanced**, then **Go to … (unsafe)**, then **Allow**.
    - It's asking for access to this spreadsheet, which is the whole point.
-4. When it finishes, check the Sheet: you should now have two tabs, **Account** and **Memories**,
-   each with a bold header row.
+4. When it finishes, check the Sheet: you should now have three tabs, **Account**, **Memories** and
+   **Messages**, each with a bold header row.
 
 `setup()` also generates a random **salt** and stores it in Script Properties. That salt is what makes
 her secret word unreadable in the Sheet. It never appears in the code or in this repo. You don't need
@@ -88,6 +88,35 @@ Add a row, reload the site, and it's there. No code, no redeploy.
 
 Open the **Account** tab. It's a single row. Her reply is in the **reply** column, with the time in
 **replyTime**. The **secretHash** column is deliberately unreadable — that's the point of it.
+
+## The mailbox
+
+Mail between you lives in the **Messages** tab, one row per mail: `id`, `direction` (`to-her` or
+`to-me`), `body`, `created`, `readAt` (both are milliseconds; blank `readAt` means unopened). Her
+reply to the letter stays where it always was, on the Account row — the admin page shows it as the
+first mail she wrote, so there is only ever one copy of it.
+
+You send and read from the admin page - `admin.html` on the site. Nothing on her pages links to it,
+so bookmark it. Signed out it shows only a plain sign-in. Sign in as `admin` with the default password from the
+round-three brief. The password is not written anywhere in this repo: the script keeps only a salted
+hash of it, in Script Properties under `ADMIN_HASH`.
+
+**When she writes to you, you get an email** with her words in it, sent the same way as the
+forgot-word email (to `OWNER_EMAIL`, or the script's owner). Her mail is saved before the email is
+attempted, so a missing address, a mail error or an exhausted quota only costs you the email, never
+her message. The last 5 emails of each day are held back for the forgot-word email.
+
+**To change the admin password:** Project Settings → Script Properties → add `ADMIN_PASSWORD` with the
+new one. The next admin sign-in (or a `setup()` run) hashes it, **deletes** the property and signs out
+every admin session. Add `ADMIN_USER` the same way to change the username. Wrong admin passwords have
+their own lockout, separate from hers, so nobody guessing at the admin page can lock her out.
+
+**Starting over:** `resetAccount` erases what *she* wrote and keeps what *you* wrote, marked unread
+again, so a fresh start finds your mail waiting. `clearMessages` empties the whole tab — use it to
+clear out test mail before the reveal. Neither touches the other.
+
+**This needs a redeploy** — see "Changing the script later" below. Running `setup()` again first is
+recommended but not required: the tab and the default password also appear on first use.
 
 ## Changing the script later
 

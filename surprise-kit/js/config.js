@@ -58,29 +58,60 @@ const CONFIG = {
   pageTitle: "Space for my aki/baby", // the browser tab
   heading: "Would You Like To Open?",
   hint: "A little something for you",
-  letter: ["My love,", "Your message goes here: a memory, a promise, something only the two of us would understand.", "Always yours,", "(your name)"],
-  button: "Continue",
+  // The love note, one line per entry. It is set like real stationery, so the SHAPE matters: the first entry is
+  // the greeting (set in script), the last two are the sign-off and your name (script again), and everything in
+  // between is the letter itself, one paragraph per entry. Add as many middle paragraphs as you like.
+  letter: [
+    "To my duo/baby/future wife/aki,",
+    "Honestly, I don't even know where to start, kasi words have always felt too small when it comes to explaining how much you mean to me. From the first day I met you, I never would've imagined that I'd have the privilege of being loved by someone like you, and even more, to be able to love you back.",
+    "Unang una phue thank you, Lord for me being able to meet you and di 'to sponsored, pero laking pasasalamat ko na rin kay Pinoy Gamers BWAHDGSHGSHS. Imagine, out of all the people in this world, somehow, our paths crossed. And now, I get to call you mine. I get to love you, and I get to be loved by you baby ehehhehe arghhhh i’m getting stomach butterflies(STOMACH BUTTERFLIES?!?!)",
+    "At first, hindi na rin talaga ako mag-eengage sana in anything na online love, but then you came along. And somehow, you made me believe in something I thought I wasn't going to believe in again. From the moment you walked into my life and we started sharing our stories with each other, I don't know exactly when it happened, but I found myself wanting to be someone you could always feel safe with. Someone you could run to when the world gets a little too heavy. Someone who could make you smile even on days when smiling feels difficult.",
+    "Mahal na mahal kita, aki. Baby, my wife. I genuinely want to keep saying these words to you, kasi that's exactly what my heart feels whenever I'm with you. And even when we're apart, there's this part of me that always feels close to you.",
+    "Your giggles, your humor, your pretty and cute face, the way you speak, kahit nga paghinga mo eh BWAHDGSHGSHS. Everything about you makes my heart race in ways I can't even explain. You have this way of making the simplest moments feel so special, and I hope you know that even the little things you do are things I'll always treasure.",
+    "I love how you make me laugh. I love how you make me feel. I love that I get to know the person behind all those smiles, all those stories, and even the little things you might not think are worth sharing. I love you in every moment we have.",
+    "First time kong gumawa ng love letter BWAHDGSHGSA idk if I'm doing good or what, pero I just want to be honest and genuine with you. I want you to know how much I love you, even if I don't always know the right words to say it.",
+    "Recently, I've also found myself doubting if I'm deserving enough for a woman like you. Sometimes, I wonder if I'm already the person you deserve, or if there's still so much I need to work on. But rather than letting those doubts hold me back, you've inspired me to become better. To work harder, to grow, and to become someone who can give you the love, care, and future you deserve.",
+    "And to me as ur future hubby(FUTURE HUBBY?!?!) BWAHDGSHGSA. But seriously, aki, I really do look forward to the day when I get to stand beside you and call you my wife. To build a life with you, to share the ordinary days with you, and to keep choosing you even when life gets difficult.",
+    "I know I can't promise that everything will always be perfect, but I can promise that I'll keep trying. I'll keep learning how to love you better, how to understand you more, and how to be the kind of partner you can always count on.",
+    "I hope that when you look back on the days we've spent together, you'll always find reasons to smile. And I hope that as we continue to grow, you'll never have to wonder whether you're loved, because I want to spend my life making sure you know that you are.",
+    "Thank you for being you, aki. Thank you for letting me into your life, for sharing your heart with me, and for giving me the chance to love you.",
+    "If I could go back to the day we first met, knowing everything I know now, I would still choose to meet you. I'd still choose to get to know you. I'd still choose to fall in love with you.",
+    "And if life gives me the chance to choose you over and over again, I hope you know that I'd never get tired of choosing you.",
+    "Mahal na mahal kita, baby. My aki, my love, my future wife.",
+    "I love you, always."
+  ],
+  button: "Continue",               // under the open letter: puts it away into her inbox and opens the rest of the site
   // the clips and collection names live in clips.json
   gallery: {
-    title: "Our little inventory",
+    title: "Our memory album (aka the clips)",
     sub: "Pick a slot to play a memory",
     all: "All",
     empty: "Nothing in here yet.",
-    error: "The clips couldn't load. Check the internet connection and refresh the page."
+    error: "The clips couldn't load. Check the internet connection and refresh the page.",
+    // The tabs: one per month, in this order. A clip goes under the month of its date (YYYY-MM-DD) - or, if its
+    // collection is a month name (July, Jul or 7), under that month instead. A clip with neither is under All only.
+    // Remove every entry here to go back to tabs named by the collection column.
+    months: [
+      { month: 7, title: "July" }, { month: 8, title: "August" }, { month: 9, title: "September" },
+      { month: 10, title: "October" }, { month: 11, title: "November" }, { month: 12, title: "December" }
+    ]
   },
   player: {
     close: "Close", previous: "Previous clip", next: "Next clip",
     unavailable: "This clip can't play here, but you can still watch it on YouTube.",
-    openOnYouTube: "Open on YouTube"
+    openOnYouTube: "Open on YouTube",
+    // when a clip ends, the next one in the tab she is on starts by itself; after the last one it simply stops.
+    // false = each clip waits for her to press next.
+    autoplayNext: true
   },
   // proposal.html question page (js/proposal.js). Wording may contain {name}: it becomes "baby" (nameWord) or, when
   // useUsername is true, her saved username. Edit the strings freely; keep {name} wherever the pet name belongs.
   proposal: {
-    title: "A question for you",
+    title: "Question for u, baby hehe",
     line1: "hi {name},",
-    line2: "will you be my {name} forever?",
+    line2: "will you be my wife one day and be my forever?",
     cheeky: "are you sure, {name}?",
-    confirm: "I knew you would say yes, {name}.",
+    confirm: "sabi q na yes ihh, kinikilig na nmn si baby.",
     yes: "Yes",
     no: "No",
     useUsername: false,   // false = use nameWord ("baby"); true = use the username she chose at sign-up
@@ -94,7 +125,12 @@ const CONFIG = {
     yesBeatReducedMs: 900    // the same beat under reduced motion
   },
   // read aloud by screen readers only
-  labels: { theme: "Minimal theme", seal: "Open the envelope", collections: "Collections", letter: "Letter" },
+  // `me` is the pixel drawing of you that arrives beside the open letter, holding the flowers out.
+  // `page...` are for a letter longer than one sheet, read a page at a time: {n} is the page she is on, {total} how
+  // many there are. `page` is what shows between the arrows, `pageSpoken` what a screen reader says instead.
+  labels: { theme: "Minimal theme", seal: "Open the envelope", collections: "Collections", letter: "Letter",
+    me: "Me, holding flowers out to you",
+    page: "{n} / {total}", pageSpoken: "Page {n} of {total}", pagePrev: "Previous page", pageNext: "Next page" },
   // music controls (js/common.js); placeholder wording, edit freely
   music: {
     // the song picker in the top-right corner (js/common.js)
@@ -107,7 +143,7 @@ const CONFIG = {
   site: {
     brand: "For you",
     footer: "Made with love, just for you",
-    titles: { memories: "Our memories", inbox: "What you wrote", profile: "You" },
+    titles: { memories: "Our memories", inbox: "Your letters", profile: "You" },
     nav: { memories: "Memories", inbox: "Inbox", profile: "Profile" },
     // shown (in the footer line) when she clicks a page that isn't open yet
     locked: {
@@ -115,13 +151,13 @@ const CONFIG = {
       inbox: "This one opens once you've written back.",
       profile: "This one opens once you've written back."
     },
-    labels: { pages: "Pages", inbox: "Inbox", inboxNew: "Inbox, 1 new", theme: "Switch theme" }
+    labels: { pages: "Pages", inbox: "Inbox", inboxNew: "Inbox, {n} new", theme: "Switch theme" }   // {n} = how many letters she has not opened
   },
   // The gate (index.html): the sliding card she lands on. The panel invites her to sign up the
   // first time; once her account exists it turns into a warm nudge back to signing in instead.
   welcome: {
     title: "Welcome back",            // heading over the sign-in fields
-    panelTitle: "Hello you",          // the coloured panel, before she has an account
+    panelTitle: "Hallo phueee",          // the coloured panel, before she has an account
     panelText: "Made for one person only. Come in and start.",
     signUp: "Sign up",                // the panel's button -> signup.html
     toSignUpSmall: "No account yet? Sign up",   // same thing, for narrow screens where the panel stacks
@@ -136,7 +172,7 @@ const CONFIG = {
     usernameLabel: "A-Anue phue na-name m-mo crushicakes k-ko?",
     usernamePlaceholder: "baby/aki/therru/xarom/Somebody Else/Osmanthus",
     moodLabel: "Are u okie babyy, masaya ka phue ba?",
-    iconLabel: "Pili ka pfp bwhehe",
+    iconLabel: "Pili ka pfp baby bwhehe",
     // the secret word (js/signup.js): she types it here and again on the login page; trimmed + lowercased when compared
     secretLabel: "Secret word na tau lang makakaalam (password phue baby/aki)",
     secretHint: "I love youuuuuu",
@@ -202,27 +238,44 @@ const CONFIG = {
     }
   },
   // Her profile card (profile.html). Wording only; the card's pictures live in /assets/profile.
+  // The card is written as a letter about her, so most of these are sentence parts rather than
+  // labels: `...Lead` is the words before her value and `...Tail` the words after it (often just a
+  // full stop). Write them so that lead + value + tail reads as one sentence. The plain `...Label`
+  // keys are still here and still do a job - they are the accessible name of each field, read out
+  // by a screen reader and never shown, because the sentence already says what the value is.
   profile: {
-    nameLabel: "name",
-    moodLabel: "feeling right now",
+    nameLabel: "your name",                // not shown: her name is the letter's salutation
+    nameChange: "change it",
+    moodLabel: "feeling right now",        // not shown
+    moodLead: "Today you are feeling",     // ... her mood gif ... "soft" ...
+    moodTail: ".",
     moodChange: "change it",
-    secretLabel: "our secret word",
-    secretShow: "tap to show",
-    secretHide: "hide",
-    // shown in place of the word on a device that was never told to remember her
-    secretUnknown: "only you know this one",
-    secretChange: "change our secret word",
+    secretLabel: "our secret word",        // not shown
+    secretLead: "Our word is",
+    secretTail: ".",
+    secretShow: "show it",
+    secretHide: "hide it",
+    // Replaces that whole line on a device that was never told to remember her, so write it as a
+    // full sentence: secretLead and secretTail are hidden when this one is used.
+    secretUnknown: "Our word is one that only you know.",
+    secretChange: "change our word",
     secretNew: "the new word",
     secretSave: "save it",
     secretSaved: "done, that is our word now",
     secretTooShort: "give it a word first?",
-    rankLabel: "valorant",
+    rankLabel: "valorant",                 // not shown
+    // The game is named in the words, not left to the icon: rankIcon is optional and the sentence
+    // has to still say what the rank is a rank in when the file is missing or blanked.
+    rankLead: "In Valorant you are",
     rank: "Gold 2",                        // edit freely; rankIcon may be left blank
+    rankTail: ".",
     rankIcon: "assets/profile/rankgold2.png",
-    playlistLabel: "on repeat",
-    usLabel: "us",
+    playlistLabel: "And this is what you have had on repeat:",  // the line that introduces the embed
+    playlistTitle: "your playlist",        // not shown: the embed's accessible name
+    usLabel: "the two of us",              // not shown: the accessible name of the pixel drawing
     usCaption: "for you, always",
-    sinceLabel: "yours since",
+    sinceLabel: "yours since",             // ... + the date her account was made, as the letter's date
+    sign: "— me",                          // signed at the foot
     saving: "saving...",
     saveFailed: "that did not save. try once more?",
     editName: "change your name",
@@ -238,14 +291,85 @@ const CONFIG = {
     sound: "",
     volume: 0.4          // [0-1]
   },
-  // letter reply + inbox wording (Phase 3 P6); edit freely, same CONFIG convention
+  // The song that plays as the letter arrives (js/letter.js). It starts with the notification above and fades in.
+  // A browser that wants a tap before any sound (iPhones, Safari) starts it on her first tap instead - usually the
+  // seal. It plays once, keeps going after she has put the letter away, and fades out when she opens a clip or the
+  // music panel. A round button beside the music one appears once it is playing, to pause it and play it again.
+  // iPhones ignore a page's volume: there it plays at the phone's own volume, with no fade.
+  song: {
+    file: "assets/music/The Only Exception.mp3",   // "" = no song
+    volume: 0.5,               // [0-1]
+    fadeInMs: 3000,
+    fadeOutMs: 1200,
+    stopWhenPutAway: false,    // true = it fades out when she presses Continue
+    play: "Play the song",     // the button's name while it is paused (read out, and shown on hover)
+    pause: "Pause the song"    // ...and while it is playing
+  },
+  // Her reply to the love note, for an account that wrote one before the letter stopped asking: it is shown under
+  // the love note in her inbox. New letters have no reply on them - she writes to you from her card instead.
   reply: {
-    label: "Write back?",
-    submit: "submit sa baby ko",
-    nudge: "Say anything, or leave it blank — I'll still see this.",
-    inboxTitle: "What you wrote",
-    inboxEmpty: "Nothing here yet.",
-    placeholder: "Write something here..."
+    inboxTitle: "What you wrote back",
+    inboxEmpty: "Nothing here yet."
+  },
+  // her inbox (inbox.html, js/inbox.js): the letters you have sent her, kept as a stack, with the love note at
+  // the bottom of it. She writes to you from her card (profile.html, the `write` block below), not from here.
+  inbox: {
+    title: "Your letters",
+    sub: "Newest on top. The first one is at the bottom, where it started.",
+    stackLabel: "Your letters, newest first",   // not shown: the list's accessible name
+    unread: "not opened yet",                    // not shown: read out for a letter with its seal still on
+    firstLetter: "the first one",                // stands in for a date on the love note
+    checking: "checking for new letters...",
+    offline: "Couldn't check for new letters just now. The ones you have are all here."
+  },
+  // the form to write to you, under her card on profile.html. You stand beside it - waiting while she writes,
+  // glad once she has sent it.
+  write: {
+    label: "Write to me",
+    placeholder: "Anything at all. I read every one.",
+    send: "send it to me",
+    sending: "sending...",
+    empty: "Write something first, love.",
+    failed: "That didn't send, but nothing is lost - your words are still here. Try again?",
+    sentTitle: "Got it.",
+    sentText: "I'm probably reading it twice already.",
+    again: "write another",
+    meWaiting: "Me, waiting to read what you write",
+    meHappy: "Me, very happy you wrote"
+  },
+  // YOUR back office (admin.html, js/admin.js). Only you see past the sign-in. Signed out, the page
+  // says nothing about what it is - keep `title` and the field labels plain for that reason.
+  admin: {
+    title: "Sign in",                    // the tab, signed out
+    titleIn: "Letters",                  // the tab, signed in
+    user: "Username",
+    pass: "Password",
+    signIn: "Sign in",
+    signingIn: "Signing in...",
+    wrong: "That isn't right.",
+    locked: "Too many tries. Wait a few minutes, then try again.",
+    network: "Couldn't reach the Sheet. Try again in a moment.",
+    signedOut: "You were signed out. Sign in again - anything you were writing is still there.",
+    heading: "Letters",                  // over the signed-in page
+    signOut: "Sign out",
+    kicker: "whenever you like",         // the small script line over the compose heading
+    composeTitle: "Write to her",
+    bodyLabel: "Your letter",
+    placeholder: "Write it the way you'd say it...",
+    send: "Send to her",
+    sending: "Sending...",
+    sent: "Sent. It's waiting in her inbox.",
+    empty: "Write something first.",
+    sendFailed: "Couldn't send it. Nothing is lost - your words are still here, try again.",
+    listTitle: "Sent and received",
+    refresh: "Refresh",
+    none: "Nothing yet, either way.",
+    toHer: "You wrote",                  // a mail you sent
+    toMe: "She wrote",                   // a mail she sent
+    letterReply: "Her reply to the letter",
+    opened: "opened",                    // followed by when
+    notOpened: "not opened yet",
+    isNew: "new"                         // her mail you have not seen before this visit
   }
 };
 
@@ -282,7 +406,8 @@ const ICONS = [
   { id: "a13", label: "Mirror", file: "assets/icons/avatar-13.jpg" },
   { id: "a14", label: "Neon", file: "assets/icons/avatar-14.jpg" },
   { id: "a15", label: "Pen", file: "assets/icons/avatar-15.jpg" },
-  { id: "a16", label: "Suit", file: "assets/icons/avatar-16.jpg" }
+  { id: "a16", label: "Suit", file: "assets/icons/avatar-16.jpg" },
+  { id: "a17", label: "Babyko", file: "assets/icons/babyko_.png" }
 ];
 // Her own photo: the upload tile is added after the list above. The picked file never leaves the
 // browser - it is cropped to a square and shrunk to AVATAR_PX before being stored, so it stays

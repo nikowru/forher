@@ -12,11 +12,17 @@
  * - The Web app URL is necessarily visible in the site's source. Anyone who finds it can call
  *   getMemories (the clip list) and attempt logins (rate-limited). They cannot read her profile or
  *   her reply without a valid session token.
+ * - The mailbox has two kinds of session that can never stand in for each other: hers (she reads
+ *   mail sent to her, writes mail to him) and his admin one (the reverse). They live in separate
+ *   lists, so a token from one is simply unknown to the other.
+ * - The admin password is weak by choice (the private link is the real protection) and is kept the
+ *   same way as her word: only a salted hash, in Script Properties. See adminHash_ for changing it.
  * - Everything is as private as the Google account that owns this Sheet.
  */
 
 var SHEET_ACCOUNT = 'Account';
 var SHEET_MEMORIES = 'Memories';
+var SHEET_MESSAGES = 'Messages';
 
 var PROP_SALT = 'SECRET_SALT';      // created by setup() if missing; never leaves the server
 var PROP_TOKENS = 'SESSION_TOKENS'; // JSON array of { h: <token hash>, exp: <ms> }
@@ -47,15 +53,43 @@ var ACCOUNT_HEADERS = ['username', 'secretHash', 'mood', 'icon', 'music', 'accep
 var MEMORIES_HEADERS = ['title', 'note', 'date', 'youtubeId', 'collection', 'order'];
 var FLOW = ['proposal', 'letter', 'memories', 'inbox'];
 
+// The mailbox. One row per mail; direction says who it is for. Her letter reply is NOT copied in here:
+// it stays on the Account row where saveReply has always put it, and getMessages shows it to him as the
+// first mail she wrote, so the letter flow is untouched and there is only ever one copy of it.
+var MESSAGES_HEADERS = ['id', 'direction', 'body', 'created', 'readAt'];
+var TO_HER = 'to-her', TO_ME = 'to-me';
+var MAX_MESSAGE = 4000;             // matches MESSAGE_MAX in js/api.js: a long letter, not a novel
+var MAX_MARK = 50;                  // ids in one markRead call
+var REPLY_ID = 'reply';             // the id getMessages gives her letter reply
+var PROP_REPLY_READ = 'REPLY_READ'; // { ts: <the reply's timestamp>, at: <ms> } once he has read it
+var MAIL_RESERVE = 5;               // emails a day kept back for "I forgot our secret word"; see tellHim_
+
+// His admin page. Its sessions are a separate list from hers, and its wrong guesses a separate
+// lockout, so a stranger hammering the admin sign-in can never lock her out of her own.
+var PROP_ADMIN_TOKENS = 'ADMIN_TOKENS';     // same shape as SESSION_TOKENS
+var PROP_ADMIN_HASH = 'ADMIN_HASH';         // the only form the admin password is ever kept in
+var PROP_ADMIN_USER = 'ADMIN_USER';         // optional; the username is 'admin' while this is unset
+var PROP_ADMIN_PASSWORD = 'ADMIN_PASSWORD'; // set this to CHANGE the password; see adminHash_
+var CACHE_ADMIN_FAILS = 'admin_fails';
+var CACHE_ADMIN_LOCKED = 'admin_locked';
+// The default password, as an unsalted SHA-256 so the word itself is not written in the repo.
+// Honestly: the digest of a dictionary word is one lookup away, so this keeps it from a glance, not
+// from anyone trying. What is STORED is a salted hash of this digest; replacing the default for real
+// is one script property (ADMIN_PASSWORD), after which this constant is never consulted again.
+var DEFAULT_ADMIN_DIGEST = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
+
 /** Run this ONCE from the Apps Script editor before deploying. Safe to run again. */
 function setup() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   if (!ss) throw new Error('No Sheet attached. Open this script from the Sheet: Extensions > Apps Script.');
   ensureSheet_(ss, SHEET_ACCOUNT, ACCOUNT_HEADERS);
   ensureSheet_(ss, SHEET_MEMORIES, MEMORIES_HEADERS);
+  ensureMessages_(ss);
   var props = PropertiesService.getScriptProperties();
   if (!props.getProperty(PROP_SALT)) props.setProperty(PROP_SALT, randomHex_(32));
-  return 'Setup complete. Tabs "' + SHEET_ACCOUNT + '" and "' + SHEET_MEMORIES + '" are ready and a salt was generated.';
+  adminHash_();   // seeds the default admin password, or takes up a new one set as ADMIN_PASSWORD
+  return 'Setup complete. Tabs "' + SHEET_ACCOUNT + '", "' + SHEET_MEMORIES + '" and "' + SHEET_MESSAGES +
+    '" are ready, a salt was generated and the admin password is stored hashed.';
 }
 
 /** Wipes the account so you can test sign-up again. Memories and the salt are left alone. */
@@ -65,14 +99,40 @@ function resetAccount() {
 }
 
 /**
+ * Run from the editor to empty the Messages tab completely - his mail as well as hers. resetAccount
+ * deliberately keeps his; this is for clearing out test mail before the reveal.
+ */
+function clearMessages() {
+  var sh = sheet_(SHEET_MESSAGES);
+  if (sh && sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, MESSAGES_HEADERS.length).clearContent();
+  PropertiesService.getScriptProperties().deleteProperty(PROP_REPLY_READ);
+  return 'Messages cleared. The account and her letter reply are untouched.';
+}
+
+/**
  * The account row, every live session and the lockout counters. The Memories tab and the salt
  * stay, so the clips and the hashing survive a reset.
+ *
+ * Her mail goes with her account; his does not. What she wrote to him is part of "everything saved
+ * with it", so it is erased. What he wrote to her is his and survives, marked unread again, so a
+ * fresh start finds it waiting rather than already opened. His admin sessions are left alone.
  */
 function wipeAccount_() {
   var sh = sheet_(SHEET_ACCOUNT);
   if (sh && sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).clearContent();
-  PropertiesService.getScriptProperties().deleteProperty(PROP_TOKENS);
+  var props = PropertiesService.getScriptProperties();
+  props.deleteProperty(PROP_TOKENS);
+  props.deleteProperty(PROP_REPLY_READ);
   CacheService.getScriptCache().removeAll([CACHE_FAILS, CACHE_LOCKED]);
+  var mail = sheet_(SHEET_MESSAGES);
+  if (!mail || mail.getLastRow() < 2) return;
+  var range = mail.getRange(2, 1, mail.getLastRow() - 1, MESSAGES_HEADERS.length);
+  var rows = range.getValues(), keep = [];
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i][1]) === TO_HER) keep.push([rows[i][0], rows[i][1], rows[i][2], rows[i][3], '']);
+  }
+  range.clearContent();
+  if (keep.length) writeRows_(mail, 2, keep);
 }
 
 function ensureSheet_(ss, name, headers) {
@@ -89,6 +149,26 @@ function ensureSheet_(ss, name, headers) {
 function sheet_(name) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   return ss ? ss.getSheetByName(name) : null;
+}
+
+/**
+ * The Messages tab, made on first use too: a mail he sends must not fail just because setup() was not
+ * run again after this tab was added to the script.
+ */
+function ensureMessages_(ss) {
+  return ensureSheet_(ss || SpreadsheetApp.getActiveSpreadsheet(), SHEET_MESSAGES, MESSAGES_HEADERS);
+}
+
+/**
+ * Writes mail rows with the text columns set to plain text first. Left to itself the Sheet reads a
+ * body like "12/25" as a date, "007" as 7 and one that starts with "=" as a formula, and then hands
+ * back something other than what was written.
+ */
+function writeRows_(sh, row, rows) {
+  var range = sh.getRange(row, 1, rows.length, MESSAGES_HEADERS.length), formats = [];
+  for (var i = 0; i < rows.length; i++) formats.push(['@', '@', '@', '0', '0']);
+  range.setNumberFormats(formats);
+  range.setValues(rows);
 }
 
 /* ------------------------------------------------------------------ router */
@@ -130,6 +210,10 @@ function route_(action, body) {
     case 'forgotSecret':  return forgotSecret_();
     case 'changeSecret':  return changeSecret_(body);
     case 'updateProfile': return updateProfile_(body);
+    case 'adminLogin':   return adminLogin_(body);
+    case 'sendMessage':  return sendMessage_(body);
+    case 'getMessages':  return getMessages_(body);
+    case 'markRead':     return markRead_(body);
     default:             return { ok: false, error: 'invalid' }; // unknown actions are ignored
   }
 }
@@ -220,8 +304,9 @@ function profileOf_(a) {
 
 /* ------------------------------------------------------------------ sessions */
 
-function readTokens_() {
-  var raw = PropertiesService.getScriptProperties().getProperty(PROP_TOKENS);
+// Her sessions by default; pass PROP_ADMIN_TOKENS for his. Same code, separate lists.
+function readTokens_(prop) {
+  var raw = PropertiesService.getScriptProperties().getProperty(prop || PROP_TOKENS);
   var list = [];
   try { list = JSON.parse(raw || '[]') || []; } catch (err) { list = []; }
   var now = Date.now(), live = [];
@@ -229,38 +314,77 @@ function readTokens_() {
   return live;
 }
 
-function newToken_() {
+function newToken_(prop) {
   var token = randomHex_(24);                       // returned once, never stored in the clear
-  var live = readTokens_();
+  var live = readTokens_(prop);
   live.push({ h: sha256_(token), exp: Date.now() + TOKEN_TTL_MS });
   if (live.length > MAX_TOKENS) live = live.slice(-MAX_TOKENS);
-  PropertiesService.getScriptProperties().setProperty(PROP_TOKENS, JSON.stringify(live));
+  PropertiesService.getScriptProperties().setProperty(prop || PROP_TOKENS, JSON.stringify(live));
   return token;
 }
 
-function validToken_(token) {
+function validToken_(token, prop) {
   if (!token) return false;
-  var want = sha256_(String(token)), live = readTokens_();
+  var want = sha256_(String(token)), live = readTokens_(prop);
   for (var i = 0; i < live.length; i++) if (sameHash_(live[i].h, want)) return true;
   return false;
 }
 
+/** 'admin', 'her', or null. The mailbox actions decide what a caller may do from this alone. */
+function roleOf_(token) {
+  if (validToken_(token, PROP_ADMIN_TOKENS)) return 'admin';
+  if (validToken_(token)) return 'her';
+  return null;
+}
+
 /* ------------------------------------------------------------------ lockout */
 
-function lockedOut_() { return !!CacheService.getScriptCache().get(CACHE_LOCKED); }
+// Her sign-in by default; pass ADMIN_LOCK for his. Separate counters on purpose - see PROP_ADMIN_TOKENS.
+var LOGIN_LOCK = { fails: CACHE_FAILS, locked: CACHE_LOCKED };
+var ADMIN_LOCK = { fails: CACHE_ADMIN_FAILS, locked: CACHE_ADMIN_LOCKED };
 
-function noteFail_() {
+function lockedOut_(k) { return !!CacheService.getScriptCache().get((k || LOGIN_LOCK).locked); }
+
+function noteFail_(k) {
+  k = k || LOGIN_LOCK;
   var cache = CacheService.getScriptCache();
-  var n = Number(cache.get(CACHE_FAILS) || 0) + 1;
+  var n = Number(cache.get(k.fails) || 0) + 1;
   if (n >= LOCKOUT_TRIES) {
-    cache.put(CACHE_LOCKED, '1', LOCKOUT_SECONDS);
-    cache.remove(CACHE_FAILS);
+    cache.put(k.locked, '1', LOCKOUT_SECONDS);
+    cache.remove(k.fails);
   } else {
-    cache.put(CACHE_FAILS, String(n), LOCKOUT_SECONDS);
+    cache.put(k.fails, String(n), LOCKOUT_SECONDS);
   }
 }
 
-function clearFails_() { CacheService.getScriptCache().removeAll([CACHE_FAILS, CACHE_LOCKED]); }
+function clearFails_(k) { k = k || LOGIN_LOCK; CacheService.getScriptCache().removeAll([k.fails, k.locked]); }
+
+/* ------------------------------------------------------------------ admin password */
+
+function adminDigest_(digest) { return sha256_(salt_() + ':admin:' + digest); }
+
+function adminUser_() {
+  return norm_(PropertiesService.getScriptProperties().getProperty(PROP_ADMIN_USER) || 'admin');
+}
+
+/**
+ * The stored admin hash. Seeds the default the first time, and takes up a new password whenever one
+ * has been put in an ADMIN_PASSWORD script property: that property is hashed and DELETED straight
+ * away, and every admin session is signed out, so the plain word sits in Script Properties only until
+ * the next sign-in or setup() run. The password is case-sensitive; the username is not.
+ */
+function adminHash_() {
+  var props = PropertiesService.getScriptProperties();
+  var fresh = props.getProperty(PROP_ADMIN_PASSWORD);
+  if (fresh) {
+    props.setProperty(PROP_ADMIN_HASH, adminDigest_(sha256_(String(fresh))));
+    props.deleteProperty(PROP_ADMIN_PASSWORD);
+    props.deleteProperty(PROP_ADMIN_TOKENS);
+  } else if (!props.getProperty(PROP_ADMIN_HASH)) {
+    props.setProperty(PROP_ADMIN_HASH, adminDigest_(DEFAULT_ADMIN_DIGEST));
+  }
+  return props.getProperty(PROP_ADMIN_HASH);
+}
 
 /* ------------------------------------------------- forgotten word */
 
@@ -568,6 +692,174 @@ function getProfile_(body) {
   var acct = readAccount_();
   if (!acct) return { ok: false, error: 'auth' };
   return { ok: true, profile: profileOf_(acct) };
+}
+
+/* ------------------------------------------------------------------ mailbox */
+
+/** His admin page signs in here. One answer for a wrong username or a wrong password, like hers. */
+function adminLogin_(body) {
+  if (lockedOut_(ADMIN_LOCK)) return { ok: false, error: 'locked' };
+  var username = str_(body.username, MAX_USERNAME);
+  var password = str_(body.password, MAX_SECRET);
+  var right = norm_(username) === adminUser_() && sameHash_(adminHash_(), adminDigest_(sha256_(password)));
+  if (!right) {
+    noteFail_(ADMIN_LOCK);
+    return { ok: false, error: 'wrong' };
+  }
+  clearFails_(ADMIN_LOCK);
+  return { ok: true, token: newToken_(PROP_ADMIN_TOKENS) };
+}
+
+/** Every mail on the tab in sheet order, with its row number for markRead. Junk rows are skipped. */
+function readMessages_() {
+  var sh = sheet_(SHEET_MESSAGES);
+  if (!sh || sh.getLastRow() < 2) return [];
+  var rows = sh.getRange(2, 1, sh.getLastRow() - 1, MESSAGES_HEADERS.length).getValues(), out = [];
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i], dir = String(r[1]);
+    if (!String(r[0]) || (dir !== TO_HER && dir !== TO_ME)) continue;
+    out.push({ id: String(r[0]), direction: dir, body: String(r[2]), created: Number(r[3]) || 0,
+      readAt: Number(r[4]) || null, row: i + 2 });
+  }
+  return out;
+}
+
+/** Exactly what the site is allowed to see of a mail. */
+function publicMail_(m) {
+  return { id: m.id, direction: m.direction, body: m.body, created: m.created, readAt: m.readAt };
+}
+
+/**
+ * Her letter reply, shown to him as the first mail she wrote. It stays on the Account row; this only
+ * presents it. Its read mark is tied to the reply's own timestamp, so a new reply after a reset is
+ * unread again instead of inheriting the old one's mark.
+ */
+function replyAsMail_(acct) {
+  if (!acct || !acct.reply) return null;
+  var seen = null;
+  try { seen = JSON.parse(PropertiesService.getScriptProperties().getProperty(PROP_REPLY_READ) || 'null'); }
+  catch (err) { seen = null; }
+  var ts = Number(acct.reply.timestamp) || 0;
+  return { id: REPLY_ID, direction: TO_ME, body: acct.reply.text, created: ts,
+    readAt: seen && Number(seen.ts) === ts ? (Number(seen.at) || null) : null, letterReply: true };
+}
+
+/**
+ * One mail, in the direction the session decides: his writes to her, hers writes to him. The caller
+ * never names a direction, so neither side can write into its own inbox.
+ */
+function sendMessage_(body) {
+  var role = roleOf_(body.token);
+  if (!role) return { ok: false, error: 'auth' };
+  if (typeof body.body !== 'string') return { ok: false, error: 'invalid' };
+  var text = str_(body.body, MAX_MESSAGE);
+  if (!text.trim()) return { ok: false, error: 'invalid' };
+  var lock = LockService.getScriptLock(), mail;
+  try { lock.waitLock(10000); } catch (err) { return { ok: false, error: 'server' }; }
+  try {
+    if (role === 'her' && !readAccount_()) return { ok: false, error: 'auth' };
+    var sh = ensureMessages_();
+    mail = { id: Utilities.getUuid(), direction: role === 'admin' ? TO_HER : TO_ME,
+      body: text, created: Date.now(), readAt: null };
+    writeRows_(sh, sh.getLastRow() + 1, [[mail.id, mail.direction, mail.body, mail.created, '']]);
+  } finally { lock.releaseLock(); }
+  // Saved first, mailed second, and outside the lock so a slow MailApp never holds up anyone else.
+  // Whatever happens to the email, her mail is already on the tab and she is told it was sent.
+  if (role === 'her') tellHim_(mail);
+  return { ok: true, message: mail };
+}
+
+/**
+ * "She wrote to you": the same mail path as forgotSecret_ - ownerEmail_() and MailApp - with her words
+ * in the body, so he can read them without opening the site. Only ever called once her mail is saved,
+ * and every failure is swallowed: ownerEmail_() throws when no address is set, MailApp can fail or run
+ * out of quota, and none of that may cost her what she wrote or reach her page as an error.
+ *
+ * The last few emails of the day are left for the forgot-word email: if she ever wrote dozens of mails
+ * in one day, being able to get her back in matters more than one more notification. Her mail is still
+ * saved and still on the admin page either way.
+ */
+function tellHim_(mail) {
+  try {
+    var left = MailApp.getRemainingDailyQuota();
+    if (left <= MAIL_RESERVE) {
+      console.log('sendMessage: not emailing - ' + left + ' left today, kept for the forgot-word email');
+      return false;
+    }
+    var to = ownerEmail_();
+    var acct = readAccount_(), who = acct ? (acct.displayName || acct.username) : 'She';
+    var when = Utilities.formatDate(new Date(mail.created), Session.getScriptTimeZone(), 'd MMM yyyy, HH:mm');
+    console.log('sendMessage: telling ' + to + ' (quota left ' + left + ')');
+    MailApp.sendEmail({
+      to: to,
+      subject: who + ' wrote to you',
+      body: [
+        who + ' wrote to you on the site, ' + when + ':',
+        '',
+        mail.body,
+        '',
+        '-',
+        'It is saved in the Messages tab and on your admin page. Replying to this email does not reach her;',
+        'write back from the admin page.'
+      ].join('\n')
+    });
+    return true;
+  } catch (err) {
+    console.log('sendMessage: email FAILED, her mail is saved - ' + err);
+    return false;
+  }
+}
+
+/**
+ * Newest first. She sees the mail sent to her. He sees both directions: what he sent, with whether she
+ * has opened it, and what she wrote back, her letter reply included.
+ */
+function getMessages_(body) {
+  var role = roleOf_(body.token);
+  if (!role) return { ok: false, error: 'auth' };
+  var acct = readAccount_();
+  if (role === 'her' && !acct) return { ok: false, error: 'auth' };
+  var all = readMessages_(), out = [];
+  for (var i = 0; i < all.length; i++) {
+    if (role === 'admin' || all[i].direction === TO_HER) out.push(publicMail_(all[i]));
+  }
+  if (role === 'admin') { var reply = replyAsMail_(acct); if (reply) out.push(reply); }
+  out.sort(function (a, b) { return b.created - a.created; });
+  return { ok: true, messages: out };
+}
+
+/**
+ * Marks mail opened - only mail addressed to the caller: she marks what he sent her, he marks what she
+ * sent him. An id from the other direction is ignored rather than refused, and a mail already read
+ * keeps its first readAt, so repeating a call changes nothing.
+ */
+function markRead_(body) {
+  var role = roleOf_(body.token);
+  if (!role) return { ok: false, error: 'auth' };
+  var ids = Array.isArray(body.ids) ? body.ids.slice(0, MAX_MARK) : [], want = {}, i;
+  for (i = 0; i < ids.length; i++) want[str_(ids[i], 64)] = true;
+  var asked = function (id) { return Object.prototype.hasOwnProperty.call(want, id); };
+  if (!ids.length) return { ok: true, marked: 0 };
+  var mine = role === 'admin' ? TO_ME : TO_HER, now = Date.now(), marked = 0;
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (err) { return { ok: false, error: 'server' }; }
+  try {
+    var acct = readAccount_();
+    if (role === 'her' && !acct) return { ok: false, error: 'auth' };
+    var all = readMessages_(), sh = sheet_(SHEET_MESSAGES);
+    for (i = 0; i < all.length; i++) {
+      var m = all[i];
+      if (asked(m.id) && m.direction === mine && !m.readAt) { sh.getRange(m.row, 5).setValue(now); marked++; }
+    }
+    if (role === 'admin' && asked(REPLY_ID)) {
+      var reply = replyAsMail_(acct);
+      if (reply && !reply.readAt) {
+        PropertiesService.getScriptProperties().setProperty(PROP_REPLY_READ, JSON.stringify({ ts: reply.created, at: now }));
+        marked++;
+      }
+    }
+    return { ok: true, marked: marked };
+  } finally { lock.releaseLock(); }
 }
 
 /**

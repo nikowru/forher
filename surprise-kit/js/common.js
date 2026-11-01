@@ -18,9 +18,16 @@
   //                     written only by js/api.js's local driver, cleared only by a full reset
   //   surprise-session  this device is logged in: { v:1, token, ts } (in Phase B `token` is the server's session token)
   //   surprise-schema   data-layout version (SCHEMA); a mismatch wipes the old keys once, see the migration below
-  const KEYS = { signup: "surprise-signup", reply: "surprise-reply", pending: "surprise-pending-sends", muted: "surprise-muted", progress: "surprise-progress", music: "surprise-music", inboxSeen: "surprise-inbox-seen", letterSeen: "surprise-letter-seen", remember: "surprise-remember", account: "surprise-account", session: "surprise-session", avatar: "surprise-avatar", schema: "surprise-schema", theme: "theme" };
+  //   surprise-mail     the stand-in for the server's Messages tab and his admin sessions; local driver only. Not in
+  //                     RESET_KEYS: like the server, his mail outlives her account (deleteAccount drops only hers)
+  //   surprise-admin    HIS admin page is signed in on this device: { v:1, token, ts }. Kept apart from her session so
+  //                     neither can be sent in place of the other; not in RESET_KEYS, her resets are not his sign-out
+  const KEYS = { signup: "surprise-signup", reply: "surprise-reply", pending: "surprise-pending-sends", muted: "surprise-muted", progress: "surprise-progress", music: "surprise-music", inboxSeen: "surprise-inbox-seen", letterSeen: "surprise-letter-seen", remember: "surprise-remember", account: "surprise-account", session: "surprise-session", avatar: "surprise-avatar", schema: "surprise-schema", mail: "surprise-mail", adminSession: "surprise-admin", unread: "surprise-unread", theme: "theme" };
+  //   surprise-unread    the last known count of letters from him she has not opened (the badge); see Inbox below.
+  //   surprise-inbox-seen  retired - the badge no longer works from one "seen" flag. Kept in RESET_KEYS so a reset
+  //                        still clears it off devices that carry it.
   S.KEYS = KEYS;
-  const RESET_KEYS = [KEYS.signup, KEYS.reply, KEYS.pending, KEYS.progress, KEYS.inboxSeen, KEYS.letterSeen, KEYS.remember, KEYS.account, KEYS.session, KEYS.avatar];
+  const RESET_KEYS = [KEYS.signup, KEYS.reply, KEYS.pending, KEYS.progress, KEYS.inboxSeen, KEYS.letterSeen, KEYS.remember, KEYS.account, KEYS.session, KEYS.avatar, KEYS.unread];
   const SCHEMA = "2";
 
   // ---- reset: ?reset=1 OR #reset (also #reset=1) clears everything except `theme`. A hash is never sent to the server,
@@ -126,14 +133,24 @@
   }
   const currentPage = () => pageOf(location.pathname);
 
-  // ---- inbox "unread" mark: she has an unread reply until she has visited the inbox page. Persisted (the old
-  // dialog's badge was in-memory only); derived from the saved reply + one "seen" flag so no second copy of state.
+  // ---- inbox "unread": how many letters from him she has not opened yet. The truth is the account's (each mail's
+  // readAt, via Api.getMessages), so it is the same number on every device. The last answer is kept in storage so
+  // the badge paints at once on the next page instead of popping in after a network round trip, and sync() then
+  // corrects it. The love note is never counted: she has read it - she wrote back to it.
   const Inbox = {
-    hasUnread() {
-      const r = Store.getJSON(KEYS.reply, null);
-      return !!(r && typeof r === "object") && Store.get(KEYS.inboxSeen, null) !== "1";
-    },
-    markSeen() { Store.set(KEYS.inboxSeen, "1"); if (S.Chrome) S.Chrome.refresh(); }
+    count() { const n = Math.floor(Number(Store.get(KEYS.unread, 0))); return n > 0 ? n : 0; },
+    hasUnread() { return Inbox.count() > 0; },
+    set(n) { Store.set(KEYS.unread, String(Math.max(0, Math.floor(Number(n) || 0)))); if (S.Chrome) S.Chrome.refresh(); },
+    // Ask the account. Quietly does nothing without a session, before the inbox is open, without js/api.js, or on the
+    // inbox page itself (js/inbox.js reads the same list and calls set() from it).
+    sync() {
+      if (!S.Api || !S.Api.getMessages || !Session.isActive() || !Progress.isUnlocked("inbox") || currentPage() === "inbox") {
+        return Promise.resolve();
+      }
+      return S.Api.getMessages().then(r => {
+        if (r && r.ok && Array.isArray(r.messages)) Inbox.set(r.messages.filter(m => m.direction === "to-her" && !m.readAt).length);
+      });
+    }
   };
   S.Inbox = Inbox;
 
@@ -282,10 +299,10 @@
       if (inboxBtn) {
         const lockedInbox = !Progress.isUnlocked("inbox") && cur !== "inbox";
         if (lockedInbox) inboxBtn.setAttribute("aria-disabled", "true"); else inboxBtn.removeAttribute("aria-disabled");
-        const unread = !lockedInbox && cur !== "inbox" && Inbox.hasUnread();
-        if (badge) badge.hidden = !unread;
+        const n = Inbox.count(), unread = !lockedInbox && cur !== "inbox" && n > 0;
+        if (badge) { badge.hidden = !unread; badge.textContent = unread ? (n > 9 ? "9+" : String(n)) : ""; }
         const lab = unread ? labels.inboxNew : labels.inbox;
-        if (lab) inboxBtn.setAttribute("aria-label", lab);
+        if (lab) inboxBtn.setAttribute("aria-label", lab.replace("{n}", String(n)));
       }
     },
     // gentle "why can't I click this" note: shown briefly in the footer line (an existing styled, aria-live slot)
@@ -339,13 +356,60 @@
     if (foot && c.footer) foot.textContent = c.footer;
     if (nav && c.labels && c.labels.pages) nav.setAttribute("aria-label", c.labels.pages);
     const th = byId("hdr-theme"); if (th && c.labels && c.labels.theme) th.setAttribute("aria-label", c.labels.theme);
-    if (cur === "inbox" && Progress.isUnlocked("inbox")) Store.set(KEYS.inboxSeen, "1"); // visiting the inbox = seen
     Chrome.refresh();
     window.addEventListener("storage", Chrome.refresh); // another tab unlocked something
   }
   // links work on every page (index.html has none to intercept); bfcache restore must not stay faded
   document.addEventListener("click", onLinkClick);
   window.addEventListener("pageshow", () => { Chrome.restore(); Chrome.refresh(); });
+
+  // ---- writing to him: the form under her card on profile.html ----
+  // Markup: .wr in style.css; wording: CONFIG.write. It never sends empty words - it
+  // nudges instead - and never loses them: a failed send leaves them in the field. Once sent, I look glad (the pose
+  // in the drawing's data-happy) and say so, with a way to write another. Needs js/api.js by the time she sends.
+  const bound = new WeakSet();
+  S.Compose = {
+    bind(root) {
+      if (!root || bound.has(root)) return;
+      const q = c => root.querySelector("." + c), W = (S.CONFIG && S.CONFIG.write) || {};
+      const form = q("wr-form"), text = q("wr-text"), send = q("wr-send"), msg = q("wr-msg"), sent = q("wr-sent"), again = q("wr-again"), me = q("wr-me");
+      if (!form || !text || !send || !sent || !again) return;
+      bound.add(root);
+      const put = (c, s) => { const el = q(c); if (el) el.textContent = s || ""; };
+      put("wr-label", W.label); put("wr-sent-title", W.sentTitle); put("wr-sent-text", W.sentText);
+      again.textContent = W.again || ""; send.textContent = W.send || ""; text.placeholder = W.placeholder || "";
+      const say = s => { if (msg) { msg.textContent = s || ""; msg.hidden = !s; } };
+      const waiting = me ? me.getAttribute("src") : "", happy = me ? me.dataset.happy : "";
+      if (me) me.alt = W.meWaiting || "";
+      if (happy) { const pre = new Image(); pre.src = happy; } // so the glad one is there the moment she sends
+
+      text.addEventListener("input", () => say(""));
+      let sending = false;
+      form.addEventListener("submit", e => {
+        e.preventDefault();
+        if (sending) return;
+        const words = text.value.trim();
+        if (!words) { say(W.empty); text.focus(); return; }
+        if (!S.Api || !S.Api.sendMessage) { say(W.failed); return; }
+        sending = true; send.disabled = true; send.textContent = W.sending || "";
+        S.Api.sendMessage(words).then(r => {
+          sending = false; send.disabled = false; send.textContent = W.send || "";
+          // A dead session has already been sent to the sign-in by js/api.js; anything else only ever says "try again".
+          if (!r || !r.ok) { say(W.failed); return; }
+          text.value = ""; say("");
+          form.hidden = true; sent.hidden = false;
+          if (me && happy) { me.src = happy; me.alt = W.meHappy || ""; }
+          if (me) { me.classList.remove("is-happy"); void me.offsetWidth; me.classList.add("is-happy"); }
+          again.focus({ preventScroll: true });
+        });
+      });
+      again.addEventListener("click", () => {
+        sent.hidden = true; form.hidden = false;
+        if (me) { if (waiting) me.src = waiting; me.alt = W.meWaiting || ""; me.classList.remove("is-happy"); }
+        text.focus();
+      });
+    }
+  };
 
   // ---- drifting dust and petals (decorative #air); ONE implementation shared by the gate, sign-up and memories ----
   S.Air = {
@@ -399,6 +463,8 @@
         const open = panel.hidden;
         panel.hidden = !open;
         btn.setAttribute("aria-expanded", String(open));
+        // she is choosing music: anything else playing on the page (the letter's song) steps aside
+        if (open) document.dispatchEvent(new CustomEvent("surprise:quiet"));
       });
       document.addEventListener("click", e => {
         if (panel.hidden) return;
@@ -429,7 +495,14 @@
   function init() {
     initChrome();
     S.Air.init();
-    Tunes.build();
+    // admin.html carries data-backoffice: no music button there, nothing that marks it as her site
+    if (!document.body.hasAttribute("data-backoffice")) Tunes.build();
+    // The badge's real count needs js/api.js, which loads after this file. Every deferred script has run by
+    // DOMContentLoaded, so ask then; on a page with no inbox button there is nothing to count for.
+    if (byId("hdr-inbox")) {
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => Inbox.sync());
+      else setTimeout(() => Inbox.sync(), 0);
+    }
   }
   if (document.body) init(); else document.addEventListener("DOMContentLoaded", init);
 })();

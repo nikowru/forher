@@ -10,7 +10,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=Cormorant+Garamond:ital,wght@1,500;1,600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Quicksand:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -62,23 +62,17 @@
      envelope falls in, and the page behind stays dimmed and inert until she has written her reply.
      js/letter.js mounts this; with the reply already saved it never shows at all. -->
 <div class="letter-over" id="letter-over" hidden>
+  <!-- me, arriving beside the paper with the flowers once the letter has settled (js/letter.js places it) -->
+  <img class="me-arrive" id="me-arrive" src="assets/me/me-shy.png" alt="" width="196" height="348" hidden>
   <section class="stage" id="stage">
     <h1 id="title"></h1>
     <div class="scene" id="scene">
       <div class="book" aria-hidden="true"></div>
       <div class="back"></div>
       <div class="letter" id="letter" inert><div class="text" id="text"></div>
-        <form class="reply" id="reply-form" novalidate>
-          <label class="reply-label" for="reply-text"></label>
-          <textarea class="reply-text" id="reply-text" maxlength="500"></textarea>
-          <p class="reply-nudge" id="reply-nudge" role="status" hidden></p>
-          <div class="reply-hp" aria-hidden="true">
-            <label for="reply-website">Website</label>
-            <input type="text" id="reply-website" name="website" tabindex="-1" autocomplete="off">
-          </div>
-          <button type="submit" class="reply-submit" id="reply-submit"></button>
-        </form>
-        <button class="go" id="go" hidden></button></div>
+        <!-- the sheet's foot: page turns either side of the page count when the letter runs over more than one page,
+             and the button that puts it away (only on the last page) -->
+        <div class="foot"><button class="leaf-turn" id="leaf-prev" type="button" hidden></button><span class="leaf-count" id="leaf-count" aria-live="polite" hidden></span><button class="leaf-turn" id="leaf-next" type="button" hidden></button><button class="go" id="go" hidden></button></div></div>
       <svg class="front" viewBox="0 0 100 64" preserveAspectRatio="none" aria-hidden="true">
         <polygon points="0,0 50,36 0,64"/>
         <polygon points="100,0 50,36 100,64"/>
