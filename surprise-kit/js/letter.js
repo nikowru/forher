@@ -225,56 +225,22 @@
   if (!seen) setTimeout(showNotif, N.delayMs); // it announced the letter once; it is not news any more
 
   // ---- the song (CONFIG.song): it starts as the letter arrives ----
-  // Played once from the start, at the moment the notification pops, fading in. A browser may refuse sound before she
-  // has touched this page: Chrome and Edge usually allow it here (she has just pressed Yes on the page before), Safari
-  // and iPhones do not - so if it is refused, it starts on her first tap or key instead, which is usually the seal.
-  // It steps aside (fades out and pauses) when anything else is about to make a sound: a clip opening, or the music
-  // panel (both send "surprise:quiet"). The round button beside the music one pauses it and plays it again; it appears
-  // once the song has started. Volume is the page's to set, except on an iPhone, which plays at the phone's own.
+  // Played once from the start, at the moment the notification pops, fading in; if the browser will not have sound
+  // yet, on her first tap instead, which is usually the seal. The player is S.Music (js/common.js): its fade, its
+  // play/pause button beside the music one, and stepping aside for a clip or the music panel all live there.
   const SONG = CONFIG.song || {};
-  const song = SONG.file ? new Audio() : null;
-  let songBtn = null, fadeTimer = 0;
-  const num = (v, d) => (v == null || isNaN(+v) ? d : +v);
-  const songVolume = () => Math.max(0, Math.min(1, num(SONG.volume, 0.5)));
-  // a timer, not animation frames: those stop in a background tab, and a fade-out has to finish to pause
-  function fadeSong(to, ms, then) {
-    clearInterval(fadeTimer);
-    const from = song.volume, t0 = Date.now();
-    fadeTimer = setInterval(() => {
-      const k = ms > 0 ? Math.min(1, (Date.now() - t0) / ms) : 1;
-      song.volume = from + (to - from) * k;
-      if (k >= 1) { clearInterval(fadeTimer); if (then) then(); }
-    }, 40);
-  }
-  function paintSongBtn() {
-    if (!songBtn) return;
-    const playing = !song.paused, label = (playing ? SONG.pause : SONG.play) || "";
-    songBtn.classList.toggle("is-playing", playing);
-    songBtn.setAttribute("aria-label", label); songBtn.title = label;
-  }
-  function songButton() {   // made at the first play, when the header is certainly there
-    if (songBtn) return;
-    const actions = document.getElementById("hdr-actions") || document.querySelector(".hdr-actions");
-    if (!actions) return;
-    songBtn = document.createElement("button");
-    songBtn.type = "button"; songBtn.id = "hdr-song"; songBtn.className = "hdr-btn hdr-song";
-    const tunes = document.getElementById("tunes");
-    actions.insertBefore(songBtn, tunes ? tunes.nextSibling : actions.firstChild);
-    songBtn.addEventListener("click", () => { untilTouched(false); if (song.paused) playSong(); else hushSong(); });
-    paintSongBtn();
-    floatSong();
-  }
   // While the letter is open, its dimmed backdrop covers the whole header, and nothing in the header can be lifted
-  // above it. So the button floats over the backdrop, on the very spot its place in the header holds (a hidden
+  // above it. So the song's button floats over the backdrop, on the very spot its place in the header holds (a hidden
   // placeholder keeps that place), and settles back into the header as the page is handed back.
-  let songSlot = null;
+  let songBtn = null, songSlot = null;
   function placeSong() {
     if (!songSlot) return;
     const r = songSlot.getBoundingClientRect();
     songBtn.style.left = r.left + "px"; songBtn.style.top = r.top + "px";
   }
-  function floatSong() {
-    if (!songBtn || songSlot || over.hidden) return;
+  function floatSong(btn) {
+    songBtn = btn;
+    if (songSlot || over.hidden) return;
     songSlot = document.createElement("span");
     songSlot.className = "hdr-btn hdr-song-slot"; songSlot.setAttribute("aria-hidden", "true");
     songBtn.replaceWith(songSlot);
@@ -288,40 +254,12 @@
     songBtn.classList.remove("is-afloat"); songBtn.style.left = songBtn.style.top = "";
     songSlot.replaceWith(songBtn); songSlot = null;
   }
-  // from where it is, fading up; true if it is playing, false if the browser said no
-  function playSong() {
-    song.volume = 0;
-    let p;
-    try { p = song.play(); } catch (e) { return Promise.resolve(false); }
-    return Promise.resolve(p).then(() => {
-      songButton(); paintSongBtn();
-      fadeSong(songVolume(), num(SONG.fadeInMs, 3000));
-      return true;
-    }, () => false);
-  }
-  function hushSong() { if (song && !song.paused) fadeSong(0, num(SONG.fadeOutMs, 1200), () => song.pause()); }
-  // waiting for her first touch: a click (a tap is one too) or a key, caught before anything else hears it. The music
-  // button and this song's own button are left to do their own thing. Not every key counts as a touch to a browser
-  // (Tab may not), so the waiting ends only once the song is actually playing.
-  function onFirstTouch(e) {
-    const t = e.target;
-    if (!song.paused || (t && t.closest && t.closest("#tunes, #hdr-song"))) return;
-    playSong().then(ok => { if (ok) untilTouched(false); });
-  }
-  function untilTouched(on) {
-    ["click", "keydown"].forEach(type => window[on ? "addEventListener" : "removeEventListener"](type, onFirstTouch, true));
-  }
+  const song = S.Music ? S.Music(SONG, { onButton: floatSong }) : null;
   if (song) {
-    song.preload = "auto";
-    song.src = SONG.file;
-    ["play", "pause", "ended"].forEach(type => song.addEventListener(type, paintSongBtn));
-    song.addEventListener("error", () => { untilTouched(false); if (songBtn) songBtn.hidden = true; }); // a missing file stays silent
     setTimeout(() => {
       if (done && SONG.stopWhenPutAway) return;   // she was quicker than the notification
-      playSong().then(ok => { if (!ok) untilTouched(true); });
+      song.start();
     }, N.delayMs);
-    // something else is about to make a sound: step aside, and do not start on a later touch either
-    document.addEventListener("surprise:quiet", () => { untilTouched(false); hushSong(); });
   }
 
   // ---- seal -> letter ----
@@ -401,7 +339,7 @@
     if (done) return; // a second click while folding
     if (Date.now() < goReadyAt) return; // it has only just taken the next arrow's place: that click was meant for "next"
     done = true;
-    if (song && SONG.stopWhenPutAway) { untilTouched(false); hushSong(); }
+    if (song && SONG.stopWhenPutAway) song.hush();
     Store.setJSON(KEYS.reply, { text: "", timestamp: Date.now() });
     Progress.unlock("memories"); Progress.unlock("inbox"); Progress.unlock("profile");
     if (S.Api) S.Api.saveReply("").then(() => S.Api.saveProgress(Progress.read()));

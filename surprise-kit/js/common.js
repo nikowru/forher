@@ -492,6 +492,113 @@
   };
   S.Tunes = Tunes;
 
+  // ---- music of our own: one song, or a few in order, with a play/pause button in the header ------------------
+  // The letter's song (CONFIG.song, js/letter.js) and the songs for his newest letter (CONFIG.inboxSongs,
+  // js/inbox.js). cfg: { file } or { files: [...] }, volume [0-1], fadeInMs, fadeOutMs, shuffle, and the button's
+  // names `play` / `pause`. The songs play once through, each straight after the one before, in the order given (or a
+  // new random order each time from the top, with shuffle: true); a file that will not play is skipped, and if none
+  // will, there is no button at all.
+  // A browser may refuse sound before she has touched the page: Chrome and Edge usually allow it when she arrived by
+  // a click on the page before, Safari and iPhones do not. Refused, start() waits and plays on her first tap or key.
+  // It steps aside (fades out and pauses) when anything else is about to make a sound: a clip opening, or the music
+  // panel (both send "surprise:quiet"). The button appears beside the music one at the first play; opts.onButton is
+  // told when it does. Volume is the page's to set, except on an iPhone, which plays at the phone's own.
+  // Returns null when there is nothing to play.
+  S.Music = function (cfg, opts) {
+    cfg = cfg || {}; opts = opts || {};
+    const files = (Array.isArray(cfg.files) ? cfg.files : [cfg.file]).filter(f => typeof f === "string" && f.trim());
+    if (!files.length) return null;
+    const num = (v, d) => (v == null || isNaN(+v) ? d : +v);
+    const volume = () => Math.max(0, Math.min(1, num(cfg.volume, 0.5)));
+    const audio = new Audio();
+    let at = 0, ended = false, btn = null, fadeTimer = 0;
+    let wanted = false;   // she is meant to be hearing it: it was started, and not paused or finished since
+    // cfg.shuffle: a new order each time it starts from the top; otherwise the order given
+    const order = files.slice();
+    const reshuffle = () => {
+      if (!cfg.shuffle) return;
+      for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+    };
+    const load = i => { at = i; ended = false; audio.src = order[i]; };
+
+    // a timer, not animation frames: those stop in a background tab, and a fade-out has to finish to pause
+    function fade(to, ms, then) {
+      clearInterval(fadeTimer);
+      const from = audio.volume, t0 = Date.now();
+      fadeTimer = setInterval(() => {
+        const k = ms > 0 ? Math.min(1, (Date.now() - t0) / ms) : 1;
+        audio.volume = from + (to - from) * k;
+        if (k >= 1) { clearInterval(fadeTimer); if (then) then(); }
+      }, 40);
+    }
+    function paint() {
+      if (!btn) return;
+      const playing = !audio.paused, label = (playing ? cfg.pause : cfg.play) || "";
+      btn.classList.toggle("is-playing", playing);
+      btn.setAttribute("aria-label", label); btn.title = label;
+    }
+    function button() {   // made at the first play, when the header is certainly there
+      if (btn) return;
+      const actions = byId("hdr-actions") || document.querySelector(".hdr-actions");
+      if (!actions) return;
+      btn = document.createElement("button");
+      btn.type = "button"; btn.id = "hdr-song"; btn.className = "hdr-btn hdr-song";
+      const tunes = byId("tunes");
+      actions.insertBefore(btn, tunes ? tunes.nextSibling : actions.firstChild);
+      btn.addEventListener("click", () => { untilTouched(false); if (audio.paused) play(); else hush(); });
+      paint();
+      if (opts.onButton) opts.onButton(btn);
+    }
+    // from where it is, fading up; true if it is playing, false if the browser said no
+    function play() {
+      if (ended) { reshuffle(); load(0); }   // after the last one: from the top
+      audio.volume = 0;
+      let p;
+      try { p = audio.play(); } catch (e) { return Promise.resolve(false); }
+      return Promise.resolve(p).then(() => { wanted = true; button(); paint(); fade(volume(), num(cfg.fadeInMs, 3000)); return true; }, () => false);
+    }
+    function hush() { wanted = false; untilTouched(false); if (!audio.paused) fade(0, num(cfg.fadeOutMs, 1200), () => audio.pause()); }
+    // waiting for her first touch: a click (a tap is one too) or a key, caught before anything else hears it. The music
+    // button and this player's own button are left to do their own thing. Not every key counts as a touch to a browser
+    // (Tab may not), so the waiting ends only once it is actually playing.
+    function onFirstTouch(e) {
+      const t = e.target;
+      if (!audio.paused || (t && t.closest && t.closest("#tunes, #hdr-song"))) return;
+      play().then(ok => { if (ok) untilTouched(false); });
+    }
+    function untilTouched(on) {
+      ["click", "keydown"].forEach(type => window[on ? "addEventListener" : "removeEventListener"](type, onFirstTouch, true));
+    }
+
+    audio.preload = "auto";
+    ["play", "pause"].forEach(type => audio.addEventListener(type, paint));
+    // the next song straight after this one; after the last, it rests (and the button plays it all again)
+    audio.addEventListener("ended", () => {
+      if (at < files.length - 1) { load(at + 1); audio.play().catch(() => {}); }
+      else { wanted = false; ended = true; paint(); }
+    });
+    // a file that will not play: on to the next, carrying on if she was hearing music; none left, no button
+    audio.addEventListener("error", () => {
+      if (at < files.length - 1) { load(at + 1); if (wanted) audio.play().catch(() => {}); }
+      else { wanted = false; untilTouched(false); if (btn) btn.hidden = true; }
+    });
+    // something else is about to make a sound: step aside, and do not start on a later touch either
+    document.addEventListener("surprise:quiet", hush);
+    reshuffle();
+    load(0);
+
+    return {
+      // play now, or on her first touch if the browser will not have it yet; nothing happens if it is already playing
+      start() {
+        if (!audio.paused) return Promise.resolve(true);
+        return play().then(ok => { if (!ok) untilTouched(true); return ok; });
+      },
+      hush,
+      get playing() { return !audio.paused; },
+      get button() { return btn; }
+    };
+  };
+
   function init() {
     initChrome();
     S.Air.init();

@@ -1132,6 +1132,67 @@ const PROBE = `(() => {${HELPERS}
       }
       await ctx2.close();
     } catch (e) { SG.failed = String(e.message || e); }
+
+    // --- the songs for his newest letter (CONFIG.inboxSongs) ---
+    // Her letter put away long ago; two letters from him, the older one read. Arriving from the gallery by a click,
+    // the newest opens by itself and the first song starts; opening the older letter and the love note leaves them
+    // playing; paused, they play on when the newest is opened again. Then all of them, in order: localmode sends a
+    // file with no length, so nothing can be skipped to its end - they are played at 16x instead (test only) and each
+    // change of song written down. After the last they rest, and her button starts them again from the top.
+    const IS = report.inboxSongs = {};
+    try {
+      const ctx3 = await sb.newContext({ viewport: { width: 1440, height: 900 } });
+      await tripwire(ctx3);
+      const ip = await ctx3.newPage();
+      ip.on("pageerror", e => report.errors.push("inbox songs: " + e));
+      const at = pg => pg.evaluate(() => {
+        const a = (window.__media || []).find(m => /music/.test(m.src)), b = document.getElementById("hdr-song");
+        const open = document.querySelector(".mb-env.is-open");
+        return { open: open ? open.dataset.id : null, song: a ? decodeURIComponent(a.src.split("/").pop()) : null,
+          playing: !!a && !a.paused, label: b ? b.getAttribute("aria-label") : null };
+      });
+      if (!process.env.ADMIN_DEFAULT) IS.skipped = "set ADMIN_DEFAULT to include it (his letters are sent from the admin side)";
+      else if ((await seed(ip)).ok) {
+        const ids = await ip.evaluate(async pw => {
+          const S = window.Surprise, A = S.Api;
+          const p = S.Progress.read(); p.inbox = true; p.profile = true; S.Progress.apply(p);
+          S.Store.setJSON(S.KEYS.reply, { text: "", timestamp: Date.now() - 864e5 * 20 }); S.Store.set(S.KEYS.letterSeen, "1");
+          if (!(await A.admin.login("admin", pw)).ok) return null;
+          await A.admin.sendMessage("An older letter, read already.");
+          await new Promise(r => setTimeout(r, 30));
+          await A.admin.sendMessage("The newest letter.");
+          A.admin.logout();
+          const all = (await A.getMessages()).messages || [];
+          const older = all.find(m => /older/.test(m.body)), newest = all.find(m => /newest/.test(m.body));
+          await A.markRead([older.id]);
+          return { older: older.id, newest: newest.id };
+        }, process.env.ADMIN_DEFAULT || "");
+        if (ids) {
+          await ip.goto(BASE + "/memories.html", { waitUntil: "load" }); await ip.waitForTimeout(800);
+          await ip.click("#hdr-inbox"); await ip.waitForURL(/inbox/);
+          await ip.waitForSelector(".mb-env.is-open", { timeout: 8000 }); await ip.waitForTimeout(1500);
+          IS.onArrival = Object.assign(await at(ip), { newestIsOpen: (await at(ip)).open === ids.newest });
+          await ip.click(`.mb-env[data-id="${ids.older}"]`); await ip.waitForTimeout(700); IS.olderLetter = await at(ip);
+          await ip.click('.mb-env[data-id="love-note"]'); await ip.waitForTimeout(700); IS.loveNote = await at(ip);
+          await ip.click("#hdr-song"); await ip.waitForTimeout(1600); IS.paused = await at(ip);
+          await ip.click(`.mb-env[data-id="${ids.newest}"]`); await ip.waitForTimeout(900); IS.newestAgain = await at(ip);
+          await ip.evaluate(() => { const a = window.__media.find(m => /music/.test(m.src));
+            const fast = () => { a.defaultPlaybackRate = 16; a.playbackRate = 16; }; fast(); a.addEventListener("loadstart", fast);
+            window.__order = [decodeURIComponent(a.src.split("/").pop())];
+            a.addEventListener("playing", () => { const n = decodeURIComponent(a.src.split("/").pop());
+              if (window.__order[window.__order.length - 1] !== n) window.__order.push(n); }); });
+          const last = await ip.evaluate(() => window.Surprise.CONFIG.inboxSongs.files.slice(-1)[0].split("/").pop());
+          await ip.waitForFunction(l => { const a = window.__media.find(m => /music/.test(m.src));
+            return a.ended && decodeURIComponent(a.src).endsWith(l); }, last, { timeout: 420000, polling: 500 }).catch(() => {});
+          IS.order = await ip.evaluate(() => window.__order);
+          IS.inTheOrderGiven = await ip.evaluate(o => JSON.stringify(o) === JSON.stringify(window.Surprise.CONFIG.inboxSongs.files.map(f => f.split("/").pop())), IS.order);
+          IS.afterTheLast = await at(ip);
+          await ip.evaluate(() => { const a = window.__media.find(m => /music/.test(m.src)); a.defaultPlaybackRate = 1; a.playbackRate = 1; });
+          await ip.click("#hdr-song"); await ip.waitForTimeout(900); IS.playAgain = await at(ip);
+        } else IS.adminLoginFailed = true;
+      }
+      await ctx3.close();
+    } catch (e) { IS.failed = String(e.message || e); }
     await sb.close();
   }
 

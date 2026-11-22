@@ -42,6 +42,13 @@
   const find = id => all().find(m => m.id === id);
   const unreadCount = () => mail.filter(m => !m.readAt).length;
 
+  // ---- the songs for his newest letter (CONFIG.inboxSongs) ----
+  // Opening his most recent letter - by hand, or as the inbox opens it for her on arrival - starts them, one after
+  // another in order; already playing, they carry on. Opening an older letter or the love note leaves them as they
+  // are. When he sends a newer letter, the songs go with that one. The player is S.Music (js/common.js).
+  const songs = S.Music ? S.Music(CONFIG.inboxSongs) : null;
+  const isNewest = m => !m.first && !!mail[0] && m.id === mail[0].id;
+
   // the first real line, as the stack shows it: the love note's opening paragraph, or his first line
   function excerpt(m) {
     const src = m.first ? (NOTE[1] || NOTE[0] || "") : String(m.body || "");
@@ -100,6 +107,7 @@
     // the sheet turns to the letter: the animation lives on .is-turning and is replayed by re-adding the class
     sheet.classList.remove("is-turning"); void sheet.offsetWidth; sheet.classList.add("is-turning");
     if (!m.readAt) read(m);
+    if (songs && isNewest(m)) songs.start();
     if (byHand && narrow.matches) sheet.scrollIntoView({ behavior: reduceMotion.matches ? "auto" : "smooth", block: "start" });
   }
 

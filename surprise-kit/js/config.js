@@ -305,6 +305,26 @@ const CONFIG = {
     play: "Play the song",     // the button's name while it is paused (read out, and shown on hover)
     pause: "Pause the song"    // ...and while it is playing
   },
+  // The songs that play in her inbox when she opens your newest letter (js/inbox.js): one after another, in this
+  // order, once through. They start when that letter opens - by her hand, or as the inbox opens it for her - and go
+  // on while she reads the others; when you send a newer letter, they go with that one instead. Same rules as `song`
+  // above: a tap first where the browser wants one, a fade in, a pause/play button beside the music one, and they
+  // fade out when she opens the music panel. Files live in assets/music. files: [] = no songs.
+  inboxSongs: {
+    files: [
+      "assets/music/last-night-on-earth.mp3",
+      "assets/music/all-i-need-to-hear.mp3",
+      "assets/music/seasons.mp3",
+      "assets/music/love.mp3",
+      "assets/music/The Only Exception.mp3"
+    ],
+    shuffle: false,            // true = a random order each time they start from the top (for when there are more)
+    volume: 0.5,               // [0-1]
+    fadeInMs: 3000,
+    fadeOutMs: 1200,
+    play: "Play the songs",
+    pause: "Pause the songs"
+  },
   // Her reply to the love note, for an account that wrote one before the letter stopped asking: it is shown under
   // the love note in her inbox. New letters have no reply on them - she writes to you from her card instead.
   reply: {
